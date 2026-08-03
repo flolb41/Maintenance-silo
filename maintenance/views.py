@@ -32,7 +32,11 @@ def connexion(request):
     form = AuthenticationForm(request, data=request.POST or None)
     if request.method == 'POST' and form.is_valid():
         login(request, form.get_user())
-        return redirect(request.GET.get('next', 'dashboard'))
+        next_url = request.GET.get('next', '')
+        from django.utils.http import url_has_allowed_host_and_scheme
+        if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+            return redirect(next_url)
+        return redirect('dashboard')
     return render(request, 'maintenance/connexion.html', {'form': form})
 
 
