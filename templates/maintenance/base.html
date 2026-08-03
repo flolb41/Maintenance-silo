@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Maintenance Silo{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    body { background-color: #f8f9fa; }
+    .sidebar { min-height: 100vh; background: #212529; }
+    .sidebar .nav-link { color: #adb5bd; }
+    .sidebar .nav-link:hover, .sidebar .nav-link.active { color: #fff; background: rgba(255,255,255,.1); border-radius: .375rem; }
+    .sidebar .nav-link i { width: 1.5rem; }
+    .badge-notif { position: absolute; top: 0; right: 0; font-size: .6rem; }
+    .priority-critique { border-left: 4px solid #dc3545; }
+    .priority-haute { border-left: 4px solid #fd7e14; }
+    .priority-normale { border-left: 4px solid #0d6efd; }
+    .priority-basse { border-left: 4px solid #6c757d; }
+    #toast-container { position: fixed; bottom: 1rem; right: 1rem; z-index: 9999; }
+  </style>
+</head>
+<body>
+{% if user.is_authenticated %}
+<div class="container-fluid">
+  <div class="row">
+    <nav class="col-md-2 d-none d-md-block sidebar py-3 px-2">
+      <div class="text-white fw-bold fs-5 px-2 mb-4">
+        <i class="bi bi-gear-wide-connected me-2"></i>Maintenance
+      </div>
+      <ul class="nav flex-column gap-1">
+        <li class="nav-item">
+          <a class="nav-link {% block active_dashboard %}{% endblock %}" href="{% url 'dashboard' %}">
+            <i class="bi bi-speedometer2"></i> Tableau de bord
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% block active_pannes %}{% endblock %}" href="{% url 'panne_list' %}">
+            <i class="bi bi-exclamation-triangle"></i> Pannes
+          </a>
+        </li>
+        {% with role=user.profile.role %}
+        {% if role != 'silo' %}
+        <li class="nav-item">
+          <a class="nav-link {% block active_preventives %}{% endblock %}" href="{% url 'preventive_list' %}">
+            <i class="bi bi-calendar-check"></i> Préventives
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% block active_factures %}{% endblock %}" href="{% url 'facture_list' %}">
+            <i class="bi bi-receipt"></i> Factures
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% block active_equipements %}{% endblock %}" href="{% url 'equipement_list' %}">
+            <i class="bi bi-tools"></i> Équipements
+          </a>
+        </li>
+        {% endif %}
+        {% if role == 'admin' %}
+        <li class="nav-item">
+          <a class="nav-link {% block active_sites %}{% endblock %}" href="{% url 'site_list' %}">
+            <i class="bi bi-building"></i> Sites
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% block active_users %}{% endblock %}" href="{% url 'utilisateur_list' %}">
+            <i class="bi bi-people"></i> Utilisateurs
+          </a>
+        </li>
+        {% endif %}
+        {% endwith %}
+      </ul>
+      <hr class="text-secondary">
+      <ul class="nav flex-column gap-1">
+        <li class="nav-item">
+          <a class="nav-link position-relative" href="{% url 'notifications' %}">
+            <i class="bi bi-bell"></i> Notifications
+            {% if notif_count > 0 %}
+            <span class="badge bg-danger badge-notif rounded-pill">{{ notif_count }}</span>
+            {% endif %}
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'mon_profil' %}">
+            <i class="bi bi-person-circle"></i> {{ user.get_full_name|default:user.username }}
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'deconnexion' %}">
+            <i class="bi bi-box-arrow-left"></i> Déconnexion
+          </a>
+        </li>
+      </ul>
+    </nav>
+    <main class="col-md-10 ms-sm-auto px-4 py-3">
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% else %}
+{% block public_content %}{% endblock %}
+{% endif %}
+
+<div id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+{% if user.is_authenticated %}
+<script>
+(function() {
+  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  let ws, retryDelay = 1000;
+
+  function connect() {
+    ws = new WebSocket(protocol + '://' + window.location.host + '/ws/notifications/');
+    ws.onmessage = function(e) {
+      const data = JSON.parse(e.data);
+      if (data.type === 'notification') {
+        showToast(data.titre, data.message, data.lien);
+      }
+    };
+    ws.onclose = function() {
+      setTimeout(connect, Math.min(retryDelay, 30000));
+      retryDelay = Math.min(retryDelay * 2, 30000);
+    };
+    ws.onopen = function() { retryDelay = 1000; };
+  }
+
+  function showToast(titre, message, lien) {
+    const container = document.getElementById('toast-container');
+    const el = document.createElement('div');
+    el.className = 'toast show align-items-center text-white bg-primary border-0 mb-2';
+    el.setAttribute('role', 'alert');
+    const inner = document.createElement('div');
+    inner.className = 'd-flex';
+    const body = document.createElement('div');
+    body.className = 'toast-body';
+    const titleEl = document.createElement('strong');
+    titleEl.className = 'd-block';
+    titleEl.textContent = titre;
+    const msgEl = document.createElement('small');
+    msgEl.textContent = message;
+    body.appendChild(titleEl);
+    body.appendChild(msgEl);
+    if (lien) {
+      const link = document.createElement('a');
+      link.href = lien;
+      link.className = 'd-block mt-1 text-white text-decoration-underline';
+      link.textContent = 'Voir';
+      body.appendChild(link);
+    }
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn-close btn-close-white me-2 m-auto ms-auto';
+    btn.setAttribute('data-bs-dismiss', 'toast');
+    inner.appendChild(body);
+    inner.appendChild(btn);
+    el.appendChild(inner);
+    container.appendChild(el);
+    setTimeout(function() { el.remove(); }, 8000);
+  }
+
+  connect();
+})();
+</script>
+{% endif %}
+</body>
+</html>

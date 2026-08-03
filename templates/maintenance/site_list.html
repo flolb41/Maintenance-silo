@@ -1,0 +1,31 @@
+{% extends 'maintenance/base.html' %}
+{% block title %}Sites{% endblock %}
+{% block active_sites %}active{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2><i class="bi bi-building me-2"></i>Sites</h2>
+  <a href="{% url 'site_create' %}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Nouveau</a>
+</div>
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead class="table-light"><tr><th>Nom</th><th>Adresse</th><th>Équipements</th><th></th></tr></thead>
+      <tbody>
+        {% for s in sites %}
+        <tr>
+          <td class="fw-semibold">{{ s.nom }}</td>
+          <td class="text-muted small">{{ s.adresse }}</td>
+          <td>{{ s.equipements.count }}</td>
+          <td class="text-end">
+            <a href="{% url 'site_update' s.pk %}" class="btn btn-sm btn-outline-primary me-1">Modifier</a>
+            <a href="{% url 'site_delete' s.pk %}" class="btn btn-sm btn-outline-danger">Supprimer</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-center text-muted py-4">Aucun site.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

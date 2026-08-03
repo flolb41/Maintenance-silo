@@ -1,0 +1,27 @@
+{% extends 'maintenance/base.html' %}
+{% block title %}Mon profil{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold"><i class="bi bi-person-circle me-2"></i>Mon profil</div>
+      <div class="card-body">
+        <div class="mb-3 p-3 bg-light rounded">
+          <strong>Rôle :</strong> {{ profile.get_role_display }}<br>
+          <strong>Sites :</strong> {{ profile.sites.all|join:", "|default:"Aucun" }}
+        </div>
+        <form method="post">
+          {% csrf_token %}
+          {% for field in form %}
+          <div class="mb-3">
+            <label class="form-label">{{ field.label }}</label>{{ field }}
+            {% for e in field.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+          </div>
+          {% endfor %}
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

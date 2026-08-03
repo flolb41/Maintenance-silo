@@ -1,0 +1,59 @@
+{% extends 'maintenance/base.html' %}
+{% block title %}Facture {{ facture.numero }}{% endblock %}
+{% block active_factures %}active{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2><i class="bi bi-receipt me-2"></i>Facture {{ facture.numero }}</h2>
+  <div>
+    <a href="{% url 'facture_update' facture.pk %}" class="btn btn-outline-primary btn-sm me-1"><i class="bi bi-pencil me-1"></i>Modifier</a>
+    <a href="{% url 'facture_list' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Retour</a>
+  </div>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white d-flex justify-content-between">
+        <span class="fw-semibold">Détails</span>
+        <span class="badge bg-{% if facture.statut == 'payee' %}success{% elif facture.statut == 'emise' %}primary{% elif facture.statut == 'annulee' %}danger{% else %}secondary{% endif %}">
+          {{ facture.get_statut_display }}
+        </span>
+      </div>
+      <div class="card-body">
+        <dl class="row">
+          <dt class="col-sm-4">Fournisseur</dt><dd class="col-sm-8">{{ facture.fournisseur }}</dd>
+          <dt class="col-sm-4">Type</dt><dd class="col-sm-8">{{ facture.get_type_facture_display }}</dd>
+          <dt class="col-sm-4">Date facture</dt><dd class="col-sm-8">{{ facture.date_facture }}</dd>
+          <dt class="col-sm-4">Échéance paiement</dt><dd class="col-sm-8">{{ facture.date_echeance_paiement|default:"—" }}</dd>
+        </dl>
+        <hr>
+        <dl class="row">
+          <dt class="col-sm-4">Montant HT</dt><dd class="col-sm-8">{{ facture.montant_ht }} €</dd>
+          <dt class="col-sm-4">TVA ({{ facture.taux_tva }}%)</dt><dd class="col-sm-8">{{ facture.montant_tva }} €</dd>
+          <dt class="col-sm-4 fw-bold">Montant TTC</dt><dd class="col-sm-8 fw-bold fs-5">{{ facture.montant_ttc }} €</dd>
+        </dl>
+        {% if facture.description %}
+        <hr>
+        <h6>Description</h6>
+        <p>{{ facture.description|linebreaks }}</p>
+        {% endif %}
+        <hr>
+        <dl class="row mb-0">
+          {% if facture.panne %}
+          <dt class="col-sm-4">Panne liée</dt>
+          <dd class="col-sm-8"><a href="{% url 'panne_detail' facture.panne.pk %}">{{ facture.panne.titre }}</a></dd>
+          {% endif %}
+          {% if facture.preventive %}
+          <dt class="col-sm-4">Préventive liée</dt>
+          <dd class="col-sm-8"><a href="{% url 'preventive_detail' facture.preventive.pk %}">{{ facture.preventive.titre }}</a></dd>
+          {% endif %}
+          {% if facture.fichier %}
+          <dt class="col-sm-4">Fichier</dt>
+          <dd class="col-sm-8"><a href="{{ facture.fichier.url }}" target="_blank"><i class="bi bi-download me-1"></i>Télécharger</a></dd>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

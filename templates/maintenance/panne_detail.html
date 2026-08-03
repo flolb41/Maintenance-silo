@@ -1,0 +1,175 @@
+{% extends 'maintenance/base.html' %}
+{% block title %}{{ panne.titre }}{% endblock %}
+{% block active_pannes %}active{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="priority-{{ panne.priorite }} ps-2">{{ panne.titre }}</h2>
+  <a href="{% url 'panne_list' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Retour</a>
+</div>
+
+<div class="row g-3">
+  <!-- Détails -->
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white d-flex justify-content-between">
+        <span class="fw-semibold">Détails</span>
+        <div>
+          <span class="badge bg-{% if panne.priorite == 'critique' %}danger{% elif panne.priorite == 'haute' %}warning text-dark{% elif panne.priorite == 'normale' %}primary{% else %}secondary{% endif %} me-1">{{ panne.get_priorite_display }}</span>
+          <span class="badge bg-light text-dark border">{{ panne.get_statut_display }}</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-3">Équipement</dt><dd class="col-sm-9">{{ panne.equipement }}</dd>
+          <dt class="col-sm-3">Site</dt><dd class="col-sm-9">{{ panne.equipement.site.nom }}</dd>
+          <dt class="col-sm-3">Signalé par</dt><dd class="col-sm-9">{{ panne.signale_par.get_full_name|default:panne.signale_par.username }}</dd>
+          <dt class="col-sm-3">Affecté à</dt><dd class="col-sm-9">{{ panne.affecte_a.get_full_name|default:panne.affecte_a.username|default:"Non affecté" }}</dd>
+          <dt class="col-sm-3">Date</dt><dd class="col-sm-9">{{ panne.date_signalement|date:"d/m/Y H:i" }}</dd>
+          {% if panne.date_resolution %}
+          <dt class="col-sm-3">Résolu le</dt><dd class="col-sm-9">{{ panne.date_resolution|date:"d/m/Y H:i" }}</dd>
+          {% endif %}
+        </dl>
+        <hr>
+        <h6>Description</h6>
+        <p>{{ panne.description|linebreaks }}</p>
+        {% if panne.solution %}
+          <h6>Solution apportée</h6>
+          <p>{{ panne.solution|linebreaks }}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Historique -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold">Historique des statuts</div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          {% for h in historique %}
+          <li class="list-group-item">
+            <div class="d-flex justify-content-between">
+              <span><strong>{{ h.ancien_statut }}</strong> → <strong>{{ h.nouveau_statut }}</strong></span>
+              <small class="text-muted">{{ h.date|date:"d/m/Y H:i" }} — {{ h.modifie_par.username|default:"?" }}</small>
+            </div>
+            {% if h.commentaire %}<small class="text-muted">{{ h.commentaire }}</small>{% endif %}
+          </li>
+          {% empty %}
+          <li class="list-group-item text-muted">Aucun changement de statut.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    <!-- Médias -->
+    {% if medias %}
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold">Fichiers joints</div>
+      <div class="card-body">
+        <div class="row g-2">
+          {% for m in medias %}
+          <div class="col-auto">
+            <a href="{{ m.fichier.url }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-paperclip me-1"></i>{{ m.legende|default:m.fichier.name }}
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Factures liées -->
+    {% if factures %}
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold">Factures liées</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr><th>N°</th><th>Fournisseur</th><th>TTC</th><th>Statut</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for f in factures %}
+            <tr>
+              <td>{{ f.numero }}</td>
+              <td>{{ f.fournisseur }}</td>
+              <td>{{ f.montant_ttc }} €</td>
+              <td><span class="badge bg-light text-dark border">{{ f.get_statut_display }}</span></td>
+              <td><a href="{% url 'facture_detail' f.pk %}">Voir</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Actions -->
+  <div class="col-lg-4">
+    {% if profile and profile.role != 'silo' %}
+    <!-- Changer statut -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold">Changer le statut</div>
+      <div class="card-body">
+        <form method="post" action="{% url 'panne_changer_statut' panne.pk %}">
+          {% csrf_token %}
+          {% for field in statut_form %}
+            <div class="mb-2">
+              <label class="form-label">{{ field.label }}</label>
+              <select name="{{ field.html_name }}" class="form-select">
+                {% for val, lbl in field.field.choices %}
+                  <option value="{{ val }}">{{ lbl }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          {% endfor %}
+          <div class="mb-2">
+            <textarea name="commentaire" class="form-control" rows="2" placeholder="Commentaire…"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm w-100">Valider</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Affecter -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold">Affecter</div>
+      <div class="card-body">
+        <form method="post" action="{% url 'panne_affecter' panne.pk %}">
+          {% csrf_token %}
+          <select name="affecte_a" class="form-select mb-2">
+            <option value="">-- choisir --</option>
+            {% for u in affectation_form.affecte_a.field.queryset %}
+              <option value="{{ u.pk }}" {% if panne.affecte_a == u %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-outline-primary btn-sm w-100">Affecter</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Ajouter média -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold">Ajouter un fichier</div>
+      <div class="card-body">
+        <form method="post" action="{% url 'panne_ajouter_media' panne.pk %}" enctype="multipart/form-data">
+          {% csrf_token %}
+          <input type="file" name="fichier" class="form-control mb-2">
+          <input type="text" name="legende" class="form-control mb-2" placeholder="Légende (optionnel)">
+          <button type="submit" class="btn btn-outline-secondary btn-sm w-100">Ajouter</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Créer facture -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold">Facture</div>
+      <div class="card-body">
+        <a href="{% url 'facture_create' %}?panne={{ panne.pk }}" class="btn btn-outline-success btn-sm w-100">
+          <i class="bi bi-receipt me-1"></i>Créer une facture
+        </a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

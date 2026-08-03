@@ -1,0 +1,41 @@
+{% extends 'maintenance/base.html' %}
+{% block title %}Équipements{% endblock %}
+{% block active_equipements %}active{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2><i class="bi bi-tools me-2"></i>Équipements</h2>
+  <a href="{% url 'equipement_create' %}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Nouveau</a>
+</div>
+<form method="get" class="mb-3">
+  <div class="input-group" style="max-width:300px">
+    <select name="site" class="form-select">
+      <option value="">Tous les sites</option>
+      {% for s in sites %}<option value="{{ s.pk }}" {% if s.pk|stringformat:"s" == request.GET.site %}selected{% endif %}>{{ s.nom }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="btn btn-outline-secondary">Filtrer</button>
+  </div>
+</form>
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead class="table-light"><tr><th>Nom</th><th>Site</th><th>Catégorie</th><th>Référence</th><th>Actif</th><th></th></tr></thead>
+      <tbody>
+        {% for eq in equipements %}
+        <tr>
+          <td class="fw-semibold">{{ eq.nom }}</td>
+          <td class="text-muted small">{{ eq.site.nom }}</td>
+          <td class="text-muted small">{{ eq.get_categorie_display }}</td>
+          <td class="text-muted small">{{ eq.reference|default:"—" }}</td>
+          <td>{% if eq.actif %}<i class="bi bi-check-circle text-success"></i>{% else %}<i class="bi bi-x-circle text-muted"></i>{% endif %}</td>
+          <td class="text-end">
+            <a href="{% url 'equipement_update' eq.pk %}" class="btn btn-sm btn-outline-primary me-1">Modifier</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-muted py-4">Aucun équipement.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

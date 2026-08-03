@@ -1,0 +1,90 @@
+{% extends 'maintenance/base.html' %}
+{% block title %}Pannes{% endblock %}
+{% block active_pannes %}active{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2><i class="bi bi-exclamation-triangle me-2"></i>Pannes</h2>
+  <a href="{% url 'panne_create' %}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Signaler</a>
+</div>
+
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <input type="text" name="q" class="form-control" placeholder="Recherche…" value="{{ current_q }}">
+      </div>
+      <div class="col-md-2">
+        <select name="statut" class="form-select">
+          <option value="">Tous statuts</option>
+          {% for val, lbl in statuts %}
+            <option value="{{ val }}" {% if val == current_statut %}selected{% endif %}>{{ lbl }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select name="priorite" class="form-select">
+          <option value="">Toutes priorités</option>
+          {% for val, lbl in priorites %}
+            <option value="{{ val }}" {% if val == current_priorite %}selected{% endif %}>{{ lbl }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select name="site" class="form-select">
+          <option value="">Tous sites</option>
+          {% for s in sites %}
+            <option value="{{ s.pk }}" {% if s.pk|stringformat:"s" == current_site %}selected{% endif %}>{{ s.nom }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-1">
+        <button type="submit" class="btn btn-outline-secondary w-100"><i class="bi bi-search"></i></button>
+      </div>
+      <div class="col-md-1">
+        <a href="{% url 'panne_list' %}" class="btn btn-outline-danger w-100"><i class="bi bi-x"></i></a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Titre</th><th>Équipement</th><th>Site</th><th>Priorité</th><th>Statut</th><th>Signalé le</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in pannes %}
+        <tr class="priority-{{ p.priorite }}">
+          <td><a href="{% url 'panne_detail' p.pk %}" class="text-decoration-none fw-semibold">{{ p.titre }}</a></td>
+          <td class="text-muted small">{{ p.equipement.nom }}</td>
+          <td class="text-muted small">{{ p.equipement.site.nom }}</td>
+          <td><span class="badge bg-{% if p.priorite == 'critique' %}danger{% elif p.priorite == 'haute' %}warning text-dark{% elif p.priorite == 'normale' %}primary{% else %}secondary{% endif %}">{{ p.get_priorite_display }}</span></td>
+          <td><span class="badge bg-light text-dark border">{{ p.get_statut_display }}</span></td>
+          <td class="text-muted small">{{ p.date_signalement|date:"d/m/Y H:i" }}</td>
+          <td><a href="{% url 'panne_detail' p.pk %}" class="btn btn-sm btn-outline-primary">Voir</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center text-muted py-4">Aucune panne trouvée.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if is_paginated %}
+<nav class="mt-3">
+  <ul class="pagination justify-content-center">
+    {% if page_obj.has_previous %}
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">‹</a></li>
+    {% endif %}
+    <li class="page-item active"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+    {% if page_obj.has_next %}
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">›</a></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}

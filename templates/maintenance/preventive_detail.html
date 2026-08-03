@@ -1,0 +1,116 @@
+{% extends 'maintenance/base.html' %}
+{% block title %}{{ preventive.titre }}{% endblock %}
+{% block active_preventives %}active{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2>{{ preventive.titre }}</h2>
+  <div>
+    <a href="{% url 'preventive_update' preventive.pk %}" class="btn btn-outline-primary btn-sm me-1"><i class="bi bi-pencil me-1"></i>Modifier</a>
+    <a href="{% url 'preventive_list' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Retour</a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white d-flex justify-content-between">
+        <span class="fw-semibold">Détails</span>
+        <span class="badge bg-light text-dark border">{{ preventive.get_statut_display }}</span>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-3">Équipement</dt><dd class="col-sm-9">{{ preventive.equipement }}</dd>
+          <dt class="col-sm-3">Site</dt><dd class="col-sm-9">{{ preventive.equipement.site.nom }}</dd>
+          <dt class="col-sm-3">Périodicité</dt><dd class="col-sm-9">{{ preventive.get_periodicite_display }}</dd>
+          <dt class="col-sm-3">Échéance</dt><dd class="col-sm-9 {% if preventive.est_en_retard %}text-danger fw-bold{% endif %}">{{ preventive.date_echeance }}</dd>
+          <dt class="col-sm-3">Affecté à</dt><dd class="col-sm-9">{{ preventive.affecte_a.get_full_name|default:preventive.affecte_a.username|default:"Non affecté" }}</dd>
+        </dl>
+        <hr>
+        <h6>Description</h6>
+        <p>{{ preventive.description|linebreaks }}</p>
+        {% if preventive.retour_intervention %}
+          <h6>Retour d'intervention</h6>
+          <p>{{ preventive.retour_intervention|linebreaks }}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Historique -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold">Historique</div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          {% for h in historique %}
+          <li class="list-group-item">
+            <div class="d-flex justify-content-between">
+              <span>{{ h.ancien_statut }} → <strong>{{ h.nouveau_statut }}</strong></span>
+              <small class="text-muted">{{ h.date|date:"d/m/Y H:i" }}</small>
+            </div>
+            {% if h.commentaire %}<small class="text-muted">{{ h.commentaire }}</small>{% endif %}
+          </li>
+          {% empty %}
+          <li class="list-group-item text-muted">Aucun changement.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    <!-- Factures -->
+    {% if factures %}
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold">Factures liées</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead class="table-light"><tr><th>N°</th><th>Fournisseur</th><th>TTC</th><th>Statut</th><th></th></tr></thead>
+          <tbody>
+            {% for f in factures %}
+            <tr>
+              <td>{{ f.numero }}</td><td>{{ f.fournisseur }}</td><td>{{ f.montant_ttc }} €</td>
+              <td><span class="badge bg-light text-dark border">{{ f.get_statut_display }}</span></td>
+              <td><a href="{% url 'facture_detail' f.pk %}">Voir</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="col-lg-4">
+    <!-- Changer statut -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold">Changer le statut</div>
+      <div class="card-body">
+        <form method="post" action="{% url 'preventive_changer_statut' preventive.pk %}">
+          {% csrf_token %}
+          {% for field in statut_form %}
+          <div class="mb-2">
+            <label class="form-label">{{ field.label }}</label>
+            {% if field.field.widget.attrs.rows %}
+              <textarea name="{{ field.html_name }}" class="form-control" rows="{{ field.field.widget.attrs.rows }}" placeholder="{{ field.label }}"></textarea>
+            {% else %}
+              <select name="{{ field.html_name }}" class="form-select">
+                {% for val, lbl in field.field.choices %}
+                  <option value="{{ val }}">{{ lbl }}</option>
+                {% endfor %}
+              </select>
+            {% endif %}
+          </div>
+          {% endfor %}
+          <button type="submit" class="btn btn-primary btn-sm w-100">Valider</button>
+        </form>
+      </div>
+    </div>
+    <!-- Créer facture -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold">Facture</div>
+      <div class="card-body">
+        <a href="{% url 'facture_create' %}?preventive={{ preventive.pk }}" class="btn btn-outline-success btn-sm w-100">
+          <i class="bi bi-receipt me-1"></i>Créer une facture
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
