@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Pannes{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-exclamation-triangle"></i> Pannes</h2>
+    <a href="{% url 'panne_creer' %}" class="btn btn-danger"><i class="bi bi-plus-lg"></i> Déclarer une panne</a>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>Titre</th>
+                    <th>Site</th>
+                    <th>Priorité</th>
+                    <th>Statut</th>
+                    <th>Déclarant</th>
+                    <th>Assigné à</th>
+                    <th>Date</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for panne in pannes %}
+                <tr>
+                    <td>{{ panne.titre|truncatechars:50 }}</td>
+                    <td>{{ panne.site.nom }}</td>
+                    <td>
+                        <span class="badge bg-{% if panne.priorite == 'critique' %}danger{% elif panne.priorite == 'haute' %}warning text-dark{% elif panne.priorite == 'normale' %}primary{% else %}secondary{% endif %}">
+                            {{ panne.get_priorite_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge bg-{% if panne.statut == 'nouvelle' %}info text-dark{% elif panne.statut == 'cloturee' %}success{% elif panne.statut == 'resolue' %}success{% else %}secondary{% endif %}">
+                            {{ panne.get_statut_display }}
+                        </span>
+                    </td>
+                    <td>{{ panne.declarant.get_full_name|default:panne.declarant.username }}</td>
+                    <td>{{ panne.agent_assigne.get_full_name|default:"—" }}</td>
+                    <td>{{ panne.creee_le|date:"d/m/Y H:i" }}</td>
+                    <td><a href="{% url 'panne_detail' panne.pk %}" class="btn btn-sm btn-outline-primary">Détail</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="text-center text-muted py-4">Aucune panne enregistrée.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

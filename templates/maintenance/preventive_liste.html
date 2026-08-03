@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Tâches préventives{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-calendar-check"></i> Maintenances préventives</h2>
+    {% if profile.role != 'silo' %}
+    <a href="{% url 'preventive_creer' %}" class="btn btn-success"><i class="bi bi-plus-lg"></i> Nouvelle tâche</a>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>Titre</th>
+                    <th>Site</th>
+                    <th>Statut</th>
+                    {% if profile.role != 'silo' %}<th>Destinataire</th>{% endif %}
+                    {% if profile.role == 'silo' %}<th>Créateur</th>{% endif %}
+                    <th>Échéance</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in preventives %}
+                <tr class="{% if p.statut == 'en_retard' %}table-danger{% elif p.statut == 'a_valider' %}table-warning{% endif %}">
+                    <td>{{ p.titre|truncatechars:50 }}</td>
+                    <td>{{ p.site.nom }}</td>
+                    <td>
+                        <span class="badge bg-{% if p.statut == 'en_retard' %}danger{% elif p.statut == 'validee' %}success{% elif p.statut == 'a_valider' %}warning text-dark{% else %}secondary{% endif %}">
+                            {{ p.get_statut_display }}
+                        </span>
+                    </td>
+                    {% if profile.role != 'silo' %}<td>{{ p.destinataire.get_full_name|default:p.destinataire.username }}</td>{% endif %}
+                    {% if profile.role == 'silo' %}<td>{{ p.createur.get_full_name|default:p.createur.username }}</td>{% endif %}
+                    <td>{{ p.echeance|date:"d/m/Y H:i" }}</td>
+                    <td><a href="{% url 'preventive_detail' p.pk %}" class="btn btn-sm btn-outline-primary">Détail</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center text-muted py-4">Aucune tâche préventive.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

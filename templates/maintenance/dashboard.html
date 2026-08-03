@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Tableau de bord{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-speedometer2"></i> Tableau de bord</h2>
+
+{% if profile.role == "admin" %}
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-warning text-center">
+            <div class="card-body">
+                <div class="fs-1 text-warning">{{ pannes_ouvertes }}</div>
+                <div class="text-muted">Pannes ouvertes</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-danger text-center">
+            <div class="card-body">
+                <div class="fs-1 text-danger">{{ pannes_critiques }}</div>
+                <div class="text-muted">Pannes critiques</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-secondary text-center">
+            <div class="card-body">
+                <div class="fs-1 text-secondary">{{ preventives_retard }}</div>
+                <div class="text-muted">Préventives en retard</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-info text-center">
+            <div class="card-body">
+                <div class="fs-1 text-info">{{ factures_non_validees }}</div>
+                <div class="text-muted">Factures à valider</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% elif profile.role == "maintenance" %}
+<div class="row g-3 mb-4">
+    <div class="col-sm-4">
+        <div class="card border-warning text-center">
+            <div class="card-body">
+                <div class="fs-1 text-warning">{{ pannes_a_affecter }}</div>
+                <div class="text-muted">Pannes à affecter</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="card border-primary text-center">
+            <div class="card-body">
+                <div class="fs-1 text-primary">{{ pannes_assignees }}</div>
+                <div class="text-muted">Pannes assignées</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="card border-success text-center">
+            <div class="card-body">
+                <div class="fs-1 text-success">{{ preventives_a_valider }}</div>
+                <div class="text-muted">Préventives à valider</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% elif profile.role == "silo" %}
+<div class="row g-3 mb-4">
+    <div class="col-sm-4">
+        <div class="card border-warning text-center">
+            <div class="card-body">
+                <div class="fs-1 text-warning">{{ pannes_declarees }}</div>
+                <div class="text-muted">Pannes déclarées</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="card border-info text-center">
+            <div class="card-body">
+                <div class="fs-1 text-info">{{ taches_recues }}</div>
+                <div class="text-muted">Tâches reçues</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="card border-primary text-center">
+            <div class="card-body">
+                <div class="fs-1 text-primary">{{ taches_en_cours }}</div>
+                <div class="text-muted">Tâches en cours</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-exclamation-triangle"></i> Pannes récentes</span>
+                <a href="{% url 'panne_liste' %}" class="btn btn-sm btn-outline-secondary">Toutes</a>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for panne in pannes_recentes %}
+                <a href="{% url 'panne_detail' panne.pk %}" class="list-group-item list-group-item-action d-flex justify-content-between">
+                    <span>{{ panne.titre|truncatechars:50 }}</span>
+                    <span class="badge bg-{% if panne.priorite == 'critique' %}danger{% elif panne.priorite == 'haute' %}warning text-dark{% else %}secondary{% endif %}">
+                        {{ panne.get_priorite_display }}
+                    </span>
+                </a>
+                {% empty %}
+                <div class="list-group-item text-muted">Aucune panne.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-calendar-check"></i> Tâches préventives récentes</span>
+                <a href="{% url 'preventive_liste' %}" class="btn btn-sm btn-outline-secondary">Toutes</a>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for p in preventives_recentes %}
+                <a href="{% url 'preventive_detail' p.pk %}" class="list-group-item list-group-item-action d-flex justify-content-between">
+                    <span>{{ p.titre|truncatechars:50 }}</span>
+                    <span class="badge bg-{% if p.statut == 'en_retard' %}danger{% elif p.statut == 'a_valider' %}warning text-dark{% elif p.statut == 'validee' %}success{% else %}secondary{% endif %}">
+                        {{ p.get_statut_display }}
+                    </span>
+                </a>
+                {% empty %}
+                <div class="list-group-item text-muted">Aucune tâche.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

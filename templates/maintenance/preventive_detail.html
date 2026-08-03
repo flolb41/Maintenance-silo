@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}{{ preventive.titre }}{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between">
+                <h5 class="mb-0"><i class="bi bi-calendar-check"></i> {{ preventive.titre }}</h5>
+                <span class="badge bg-{% if preventive.statut == 'en_retard' %}danger{% elif preventive.statut == 'validee' %}success{% elif preventive.statut == 'a_valider' %}warning text-dark{% else %}secondary{% endif %} fs-6">
+                    {{ preventive.get_statut_display }}
+                </span>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-3">Site</dt><dd class="col-sm-9">{{ preventive.site.nom }}</dd>
+                    <dt class="col-sm-3">Équipement</dt><dd class="col-sm-9">{{ preventive.equipement|default:"—" }}</dd>
+                    <dt class="col-sm-3">Créateur</dt><dd class="col-sm-9">{{ preventive.createur.get_full_name|default:preventive.createur.username }}</dd>
+                    <dt class="col-sm-3">Destinataire</dt><dd class="col-sm-9">{{ preventive.destinataire.get_full_name|default:preventive.destinataire.username }}</dd>
+                    <dt class="col-sm-3">Échéance</dt><dd class="col-sm-9">{{ preventive.echeance|date:"d/m/Y H:i" }}</dd>
+                    <dt class="col-sm-3">Instructions</dt><dd class="col-sm-9">{{ preventive.instructions|linebreaks }}</dd>
+                    {% if preventive.retour %}
+                    <dt class="col-sm-3">Compte rendu</dt><dd class="col-sm-9">{{ preventive.retour|linebreaks }}</dd>
+                    {% endif %}
+                    {% if preventive.commentaire_validation %}
+                    <dt class="col-sm-3">Commentaire validation</dt><dd class="col-sm-9">{{ preventive.commentaire_validation|linebreaks }}</dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+
+        <!-- Actions agent maintenance -->
+        {% if profile.role != 'silo' %}
+        <div class="card mb-3">
+            <div class="card-header">Actions</div>
+            <div class="card-body d-flex gap-2 flex-wrap">
+                {% if preventive.statut == 'brouillon' or preventive.statut == 'rejetee' %}
+                {% if preventive.createur == request.user or profile.role == 'admin' %}
+                <form method="post" action="{% url 'preventive_envoyer' preventive.pk %}">{% csrf_token %}<button type="submit" class="btn btn-success">Envoyer à l'agent silo</button></form>
+                {% endif %}
+                {% endif %}
+                {% if preventive.statut == 'a_valider' %}
+                <a href="{% url 'preventive_valider' preventive.pk %}" class="btn btn-primary">Valider / Rejeter</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Actions agent silo -->
+        {% if profile.role == 'silo' and preventive.destinataire == request.user %}
+        <div class="card mb-3">
+            <div class="card-header">Mes actions</div>
+            <div class="card-body d-flex gap-2 flex-wrap">
+                {% if preventive.statut == 'envoyee' %}
+                <form method="post" action="{% url 'preventive_recevoir' preventive.pk %}">{% csrf_token %}<button type="submit" class="btn btn-info">Marquer comme reçue</button></form>
+                {% endif %}
+                {% if preventive.statut == 'recue' %}
+                <form method="post" action="{% url 'preventive_demarrer' preventive.pk %}">{% csrf_token %}<button type="submit" class="btn btn-primary">Démarrer</button></form>
+                {% endif %}
+                {% if preventive.statut == 'en_cours' %}
+                <a href="{% url 'preventive_terminer' preventive.pk %}" class="btn btn-success">Terminer (compte rendu)</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Médias -->
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-paperclip"></i> Fichiers joints ({{ medias.count }})</div>
+            <div class="card-body">
+                {% for media in medias %}
+                <div class="d-flex align-items-center mb-1">
+                    <i class="bi bi-file-earmark me-2"></i>
+                    <a href="{{ media.fichier.url }}" target="_blank">{{ media.nom_original }}</a>
+                    <small class="text-muted ms-2">— {{ media.ajoute_par.username }}, {{ media.cree_le|date:"d/m/Y H:i" }}</small>
+                </div>
+                {% empty %}
+                <p class="text-muted mb-0">Aucun fichier.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

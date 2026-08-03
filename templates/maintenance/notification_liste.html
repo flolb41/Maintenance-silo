@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-bell"></i> Notifications {% if non_lues %}<span class="badge bg-danger">{{ non_lues }}</span>{% endif %}</h2>
+    {% if non_lues %}
+    <form method="post" action="{% url 'notification_tout_lire' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-outline-secondary">Tout marquer comme lu</button>
+    </form>
+    {% endif %}
+</div>
+
+<div class="list-group">
+    {% for notif in notifications %}
+    <div class="list-group-item {% if not notif.lue %}list-group-item-light border-start border-primary border-3{% endif %}">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <strong>{{ notif.titre }}</strong><br>
+                <span class="text-muted">{{ notif.message }}</span>
+                {% if notif.lien %}
+                <br><a href="{{ notif.lien }}" class="small">Voir →</a>
+                {% endif %}
+            </div>
+            <div class="text-end">
+                <small class="text-muted">{{ notif.creee_le|date:"d/m/Y H:i" }}</small><br>
+                {% if not notif.lue %}
+                <form method="post" action="{% url 'notification_marquer_lue' notif.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-link p-0">Marquer lu</button>
+                </form>
+                {% else %}
+                <span class="text-success small"><i class="bi bi-check2"></i> Lu</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="list-group-item text-muted text-center py-4">Aucune notification.</div>
+    {% endfor %}
+</div>
+{% endblock %}

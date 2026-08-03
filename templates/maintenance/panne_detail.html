@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}{{ panne.titre }}{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between">
+                <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> {{ panne.titre }}</h5>
+                <span class="badge bg-{% if panne.priorite == 'critique' %}danger{% elif panne.priorite == 'haute' %}warning text-dark{% else %}primary{% endif %} fs-6">
+                    {{ panne.get_priorite_display }}
+                </span>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-3">Site</dt><dd class="col-sm-9">{{ panne.site.nom }}</dd>
+                    <dt class="col-sm-3">Équipement</dt><dd class="col-sm-9">{{ panne.equipement|default:"—" }}</dd>
+                    <dt class="col-sm-3">Statut</dt>
+                    <dd class="col-sm-9">
+                        <span class="badge bg-secondary">{{ panne.get_statut_display }}</span>
+                    </dd>
+                    <dt class="col-sm-3">Déclarant</dt><dd class="col-sm-9">{{ panne.declarant.get_full_name|default:panne.declarant.username }}</dd>
+                    <dt class="col-sm-3">Assigné à</dt><dd class="col-sm-9">{{ panne.agent_assigne.get_full_name|default:"Non assigné" }}</dd>
+                    <dt class="col-sm-3">Déclarée le</dt><dd class="col-sm-9">{{ panne.creee_le|date:"d/m/Y H:i" }}</dd>
+                    <dt class="col-sm-3">Description</dt><dd class="col-sm-9">{{ panne.description|linebreaks }}</dd>
+                    {% if panne.commentaire_resolution %}
+                    <dt class="col-sm-3">Commentaire</dt><dd class="col-sm-9">{{ panne.commentaire_resolution|linebreaks }}</dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+
+        {% if profile.role != 'silo' %}
+        <!-- Actions -->
+        <div class="card mb-3">
+            <div class="card-header">Actions</div>
+            <div class="card-body">
+                <div class="d-flex gap-2 flex-wrap">
+                    {% if panne.statut == 'nouvelle' or panne.statut == 'affectee' %}
+                    <a href="{% url 'panne_affecter' panne.pk %}" class="btn btn-primary">
+                        <i class="bi bi-person-check"></i> Affecter
+                    </a>
+                    {% endif %}
+                    {% if transitions_autorisees %}
+                    <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#statutModal">
+                        <i class="bi bi-arrow-right-circle"></i> Changer le statut
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Médias -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-paperclip"></i> Fichiers joints ({{ medias.count }})</span>
+            </div>
+            <div class="card-body">
+                {% for media in medias %}
+                <div class="d-flex align-items-center mb-1">
+                    <i class="bi bi-file-earmark me-2"></i>
+                    <a href="{{ media.fichier.url }}" target="_blank">{{ media.nom_original }}</a>
+                    <small class="text-muted ms-2">— {{ media.ajoute_par.username }}, {{ media.cree_le|date:"d/m/Y H:i" }}</small>
+                </div>
+                {% empty %}
+                <p class="text-muted mb-0">Aucun fichier joint.</p>
+                {% endfor %}
+                <hr>
+                <form method="post" action="{% url 'panne_ajouter_media' panne.pk %}" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="input-group">
+                        <input type="file" name="medias" multiple class="form-control" accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx,.mp4,.webm,.mov">
+                        <button type="submit" class="btn btn-outline-secondary">Ajouter</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% if profile.role != 'silo' %}
+        <!-- Factures -->
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-receipt"></i> Factures ({{ factures.count }})</div>
+            <div class="card-body">
+                {% for facture in factures %}
+                <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                    <div>
+                        <strong>{{ facture.numero }}</strong> — {{ facture.fournisseur }}<br>
+                        <small>HT : {{ facture.montant_ht }} € | TTC : {{ facture.montant_ttc }} €</small>
+                    </div>
+                    <span class="badge bg-{% if facture.validee %}success{% else %}warning text-dark{% endif %}">
+                        {% if facture.validee %}Validée{% else %}À valider{% endif %}
+                    </span>
+                </div>
+                {% empty %}
+                <p class="text-muted mb-0">Aucune facture.</p>
+                {% endfor %}
+                <hr>
+                <form method="post" action="{% url 'panne_ajouter_facture' panne.pk %}" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="row g-2">
+                        <div class="col-sm-6"><input type="text" name="numero" class="form-control" placeholder="N° facture" required></div>
+                        <div class="col-sm-6"><input type="text" name="fournisseur" class="form-control" placeholder="Fournisseur" required></div>
+                        <div class="col-sm-4"><input type="number" step="0.01" name="montant_ht" class="form-control" placeholder="Montant HT" required></div>
+                        <div class="col-sm-4"><input type="number" step="0.01" name="montant_ttc" class="form-control" placeholder="Montant TTC" required></div>
+                        <div class="col-sm-4"><input type="file" name="fichier_upload" class="form-control"></div>
+                        <div class="col-12"><button type="submit" class="btn btn-outline-primary w-100">Ajouter la facture</button></div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal changement de statut -->
+{% if transitions_autorisees %}
+<div class="modal fade" id="statutModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'panne_changer_statut' panne.pk %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Changer le statut</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Nouveau statut</label>
+                        <select name="nouveau_statut" class="form-select" required>
+                            {% for statut in transitions_autorisees %}
+                            <option value="{{ statut }}">{{ statut }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Commentaire</label>
+                        <textarea name="commentaire" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Fichiers joints</label>
+                        <input type="file" name="medias" multiple class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Confirmer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
