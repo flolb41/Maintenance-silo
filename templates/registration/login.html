@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Connexion{% endblock %}
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white text-center">
+                <h4><i class="bi bi-gear-wide-connected"></i> Maintenance Silo</h4>
+                <p class="mb-0 text-muted small">Connexion</p>
+            </div>
+            <div class="card-body p-4">
+                {% if form.errors %}
+                <div class="alert alert-danger">Identifiants incorrects. Veuillez réessayer.</div>
+                {% endif %}
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Nom d'utilisateur</label>
+                        <input type="text" name="username" class="form-control" autofocus required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Mot de passe</label>
+                        <input type="password" name="password" class="form-control" required>
+                    </div>
+                    <input type="hidden" name="next" value="{{ next }}">
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-dark">Se connecter</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
