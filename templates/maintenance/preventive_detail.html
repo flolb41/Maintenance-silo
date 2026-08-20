@@ -57,8 +57,8 @@
       </div>
     </div>
 
-    <!-- Factures (masquées pour les agents silo) -->
-    {% if factures and profile and profile.role != 'silo' %}
+    <!-- Factures (admin uniquement) -->
+    {% if factures and profile and profile.role == 'admin' %}
     <div class="card border-0 shadow-sm">
       <div class="card-header bg-white fw-semibold">Factures liées</div>
       <div class="card-body p-0">
@@ -105,7 +105,8 @@
         </form>
       </div>
     </div>
-    <!-- Créer facture -->
+    <!-- Créer facture (admin uniquement) -->
+    {% if profile and profile.role == 'admin' %}
     <div class="card border-0 shadow-sm">
       <div class="card-header bg-white fw-semibold">Facture</div>
       <div class="card-body">
@@ -114,6 +115,7 @@
         </a>
       </div>
     </div>
+    {% endif %}
     {% endif %}
   </div>
 </div>

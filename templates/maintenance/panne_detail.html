@@ -78,7 +78,7 @@
     {% endif %}
 
     <!-- Factures liées -->
-    {% if factures and profile and profile.role != 'silo' %}
+    {% if factures and profile and profile.role == 'admin' %}
     <div class="card border-0 shadow-sm mb-3">
       <div class="card-header bg-white fw-semibold">Factures liées</div>
       <div class="card-body p-0">
@@ -161,6 +161,7 @@
     </div>
 
     <!-- Créer facture -->
+    {% if profile and profile.role == 'admin' %}
     <div class="card border-0 shadow-sm mb-3">
       <div class="card-header bg-white fw-semibold">Facture</div>
       <div class="card-body">
@@ -169,6 +170,7 @@
         </a>
       </div>
     </div>
+    {% endif %}
     {% endif %}
   </div>
 </div>

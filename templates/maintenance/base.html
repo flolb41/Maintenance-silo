@@ -47,16 +47,17 @@
         </li>
         {% if role != 'silo' %}
         <li class="nav-item">
-          <a class="nav-link {% block active_factures %}{% endblock %}" href="{% url 'facture_list' %}">
-            <i class="bi bi-receipt"></i> Factures
-          </a>
-        </li>
-        <li class="nav-item">
           <a class="nav-link {% block active_equipements %}{% endblock %}" href="{% url 'equipement_list' %}">
             <i class="bi bi-tools"></i> Équipements
           </a>
         </li>
         {% endif %}
+        {% if role == 'admin' %}
+        <li class="nav-item">
+          <a class="nav-link {% block active_factures %}{% endblock %}" href="{% url 'facture_list' %}">
+            <i class="bi bi-receipt"></i> Factures
+          </a>
+        </li>
         {% if role == 'admin' %}
         <li class="nav-item">
           <a class="nav-link {% block active_sites %}{% endblock %}" href="{% url 'site_list' %}">

@@ -273,12 +273,13 @@ class PanneDetailView(SiloRequiredMixin, DetailView):
         user = self.request.user
         ctx['historique'] = panne.historique.all()
         ctx['medias'] = panne.medias.all()
-        ctx['factures'] = panne.factures.all()
         try:
             profile = user.profile
         except Exception:
             profile = None
         ctx['profile'] = profile
+        if profile and profile.is_admin():
+            ctx['factures'] = panne.factures.all()
         if profile and not profile.is_silo():
             ctx['statut_form'] = PanneStatutForm(panne=panne)
             if profile.is_admin() or profile.is_maintenance():
@@ -465,7 +466,8 @@ class PreventiveDetailView(SiloRequiredMixin, DetailView):
         ctx['profile'] = profile
         ctx['historique'] = preventive.historique.all()
         ctx['medias'] = preventive.medias.all()
-        ctx['factures'] = preventive.factures.all()
+        if profile and profile.is_admin():
+            ctx['factures'] = preventive.factures.all()
         ctx['statut_form'] = PreventiveStatutForm(preventive=preventive)
         return ctx
 
@@ -539,7 +541,7 @@ def preventive_changer_statut(request, pk):
 # FACTURES
 # ─────────────────────────────────────────────
 
-class FactureListView(MaintenanceRequiredMixin, ListView):
+class FactureListView(AdminRequiredMixin, ListView):
     model = Facture
     template_name = 'maintenance/facture_list.html'
     context_object_name = 'factures'
@@ -574,13 +576,13 @@ class FactureListView(MaintenanceRequiredMixin, ListView):
         return ctx
 
 
-class FactureDetailView(MaintenanceRequiredMixin, DetailView):
+class FactureDetailView(AdminRequiredMixin, DetailView):
     model = Facture
     template_name = 'maintenance/facture_detail.html'
     context_object_name = 'facture'
 
 
-class FactureCreateView(MaintenanceRequiredMixin, CreateView):
+class FactureCreateView(AdminRequiredMixin, CreateView):
     model = Facture
     form_class = FactureForm
     template_name = 'maintenance/facture_form.html'
@@ -611,7 +613,7 @@ class FactureCreateView(MaintenanceRequiredMixin, CreateView):
         return reverse('facture_detail', kwargs={'pk': self.object.pk})
 
 
-class FactureUpdateView(MaintenanceRequiredMixin, UpdateView):
+class FactureUpdateView(AdminRequiredMixin, UpdateView):
     model = Facture
     form_class = FactureForm
     template_name = 'maintenance/facture_form.html'
