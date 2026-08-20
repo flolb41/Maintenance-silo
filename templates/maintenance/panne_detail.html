@@ -78,7 +78,7 @@
     {% endif %}
 
     <!-- Factures liées -->
-    {% if factures %}
+    {% if factures and profile and profile.role != 'silo' %}
     <div class="card border-0 shadow-sm mb-3">
       <div class="card-header bg-white fw-semibold">Factures liées</div>
       <div class="card-body p-0">
@@ -105,6 +105,19 @@
 
   <!-- Actions -->
   <div class="col-lg-4">
+    <!-- Ajouter photo/vidéo (accessible à tous les rôles) -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold"><i class="bi bi-camera me-1"></i>Ajouter une photo / vidéo</div>
+      <div class="card-body">
+        <form method="post" action="{% url 'panne_ajouter_media' panne.pk %}" enctype="multipart/form-data">
+          {% csrf_token %}
+          <input type="file" name="fichier" class="form-control mb-2" accept="image/*,video/*">
+          <input type="text" name="legende" class="form-control mb-2" placeholder="Légende (optionnel)">
+          <button type="submit" class="btn btn-outline-secondary btn-sm w-100">Ajouter</button>
+        </form>
+      </div>
+    </div>
+
     {% if profile and profile.role != 'silo' %}
     <!-- Changer statut -->
     <div class="card border-0 shadow-sm mb-3">
@@ -143,19 +156,6 @@
             {% endfor %}
           </select>
           <button type="submit" class="btn btn-outline-primary btn-sm w-100">Affecter</button>
-        </form>
-      </div>
-    </div>
-
-    <!-- Ajouter média -->
-    <div class="card border-0 shadow-sm mb-3">
-      <div class="card-header bg-white fw-semibold">Ajouter un fichier</div>
-      <div class="card-body">
-        <form method="post" action="{% url 'panne_ajouter_media' panne.pk %}" enctype="multipart/form-data">
-          {% csrf_token %}
-          <input type="file" name="fichier" class="form-control mb-2">
-          <input type="text" name="legende" class="form-control mb-2" placeholder="Légende (optionnel)">
-          <button type="submit" class="btn btn-outline-secondary btn-sm w-100">Ajouter</button>
         </form>
       </div>
     </div>

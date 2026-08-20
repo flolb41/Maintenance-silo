@@ -67,6 +67,7 @@ def notifier_panne(sender, instance, created, **kwargs):
 def notifier_preventive(sender, instance, created, **kwargs):
     if created:
         lien = f'/preventives/{instance.pk}/'
+        # Notifier les admins
         admins = User.objects.filter(profile__role='admin')
         for user in admins:
             creer_notif(
@@ -74,6 +75,17 @@ def notifier_preventive(sender, instance, created, **kwargs):
                 Notification.TYPE_PREVENTIVE,
                 f'Nouvelle préventive : {instance.titre}',
                 f'Échéance le {instance.date_echeance}',
+                lien,
+            )
+        # Notifier les agents silo du même site
+        site = instance.equipement.site
+        agents_silo = User.objects.filter(profile__role='silo', profile__sites=site)
+        for user in agents_silo:
+            creer_notif(
+                user,
+                Notification.TYPE_PREVENTIVE,
+                f'Maintenance préventive planifiée : {instance.titre}',
+                f'Équipement : {instance.equipement} — Échéance le {instance.date_echeance}',
                 lien,
             )
 

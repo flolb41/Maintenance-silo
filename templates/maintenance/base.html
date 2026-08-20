@@ -40,12 +40,12 @@
           </a>
         </li>
         {% with role=user.profile.role %}
-        {% if role != 'silo' %}
         <li class="nav-item">
           <a class="nav-link {% block active_preventives %}{% endblock %}" href="{% url 'preventive_list' %}">
             <i class="bi bi-calendar-check"></i> Préventives
           </a>
         </li>
+        {% if role != 'silo' %}
         <li class="nav-item">
           <a class="nav-link {% block active_factures %}{% endblock %}" href="{% url 'facture_list' %}">
             <i class="bi bi-receipt"></i> Factures

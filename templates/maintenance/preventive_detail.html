@@ -5,7 +5,9 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h2>{{ preventive.titre }}</h2>
   <div>
+    {% if profile and profile.role != 'silo' %}
     <a href="{% url 'preventive_update' preventive.pk %}" class="btn btn-outline-primary btn-sm me-1"><i class="bi bi-pencil me-1"></i>Modifier</a>
+    {% endif %}
     <a href="{% url 'preventive_list' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Retour</a>
   </div>
 </div>
@@ -55,8 +57,8 @@
       </div>
     </div>
 
-    <!-- Factures -->
-    {% if factures %}
+    <!-- Factures (masquées pour les agents silo) -->
+    {% if factures and profile and profile.role != 'silo' %}
     <div class="card border-0 shadow-sm">
       <div class="card-header bg-white fw-semibold">Factures liées</div>
       <div class="card-body p-0">
@@ -78,6 +80,7 @@
   </div>
 
   <div class="col-lg-4">
+    {% if profile and profile.role != 'silo' %}
     <!-- Changer statut -->
     <div class="card border-0 shadow-sm mb-3">
       <div class="card-header bg-white fw-semibold">Changer le statut</div>
@@ -111,6 +114,7 @@
         </a>
       </div>
     </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

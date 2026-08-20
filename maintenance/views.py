@@ -298,8 +298,16 @@ class PanneCreateView(SiloRequiredMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.signale_par = self.request.user
+        response = super().form_valid(form)
+        fichier = self.request.FILES.get('fichier')
+        if fichier:
+            PanneMedia.objects.create(
+                panne=self.object,
+                fichier=fichier,
+                legende=self.request.POST.get('legende', ''),
+            )
         messages.success(self.request, 'Panne signalée avec succès.')
-        return super().form_valid(form)
+        return response
 
     def get_success_url(self):
         return reverse('panne_detail', kwargs={'pk': self.object.pk})
@@ -368,6 +376,14 @@ def panne_affecter(request, pk):
 @login_required
 def panne_ajouter_media(request, pk):
     panne = get_object_or_404(Panne, pk=pk)
+    try:
+        profile = request.user.profile
+    except Exception:
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied
+    if profile.is_silo() and panne.signale_par != request.user:
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied
     if request.method == 'POST':
         form = PanneMediaForm(request.POST, request.FILES)
         if form.is_valid():
@@ -382,7 +398,7 @@ def panne_ajouter_media(request, pk):
 # MAINTENANCES PRÉVENTIVES
 # ─────────────────────────────────────────────
 
-class PreventiveListView(MaintenanceRequiredMixin, ListView):
+class PreventiveListView(SiloRequiredMixin, ListView):
     model = MaintenancePreventive
     template_name = 'maintenance/preventive_list.html'
     context_object_name = 'preventives'
@@ -418,14 +434,35 @@ class PreventiveListView(MaintenanceRequiredMixin, ListView):
         return ctx
 
 
-class PreventiveDetailView(MaintenanceRequiredMixin, DetailView):
+class PreventiveDetailView(SiloRequiredMixin, DetailView):
     model = MaintenancePreventive
     template_name = 'maintenance/preventive_detail.html'
     context_object_name = 'preventive'
 
+    def get_object(self):
+        obj = super().get_object()
+        user = self.request.user
+        try:
+            profile = user.profile
+        except Exception:
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied
+        if profile.is_silo():
+            sites = profile.sites.all()
+            if obj.equipement.site not in sites:
+                from django.core.exceptions import PermissionDenied
+                raise PermissionDenied
+        return obj
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         preventive = self.object
+        user = self.request.user
+        try:
+            profile = user.profile
+        except Exception:
+            profile = None
+        ctx['profile'] = profile
         ctx['historique'] = preventive.historique.all()
         ctx['medias'] = preventive.medias.all()
         ctx['factures'] = preventive.factures.all()
