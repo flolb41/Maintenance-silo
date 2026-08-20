@@ -1,0 +1,100 @@
+{% extends 'maintenance/base.html' %}
+{% block title %}Statistiques{% endblock %}
+{% block active_stats %}active{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2><i class="bi bi-bar-chart-line me-2"></i>Statistiques par silo</h2>
+</div>
+
+<!-- Filtres -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body">
+    <form method="get" class="row g-3 align-items-end">
+      {% for field in form %}
+      <div class="col-md-3">
+        <label class="form-label fw-semibold">{{ field.label }}</label>
+        {% if field.field.widget.input_type == 'select' %}
+          <select name="{{ field.html_name }}" class="form-select">
+            <option value="">Tous les sites</option>
+            {% for val, lbl in field.field.choices %}
+              {% if val %}<option value="{{ val }}" {% if field.value|stringformat:"s" == val|stringformat:"s" %}selected{% endif %}>{{ lbl }}</option>{% endif %}
+            {% endfor %}
+          </select>
+        {% else %}
+          <input type="{{ field.field.widget.input_type|default:'text' }}" name="{{ field.html_name }}" class="form-control" value="{{ field.value|default:'' }}">
+        {% endif %}
+      </div>
+      {% endfor %}
+      <div class="col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-search me-1"></i>Filtrer</button>
+        {% if resultats %}
+        <a href="?{{ request.GET.urlencode }}&export=csv" class="btn btn-outline-success">
+          <i class="bi bi-download me-1"></i>CSV
+        </a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if resultats %}
+{% if date_debut or date_fin %}
+<p class="text-muted small">
+  Période :
+  {% if date_debut %}du {{ date_debut }}{% endif %}
+  {% if date_fin %}au {{ date_fin }}{% endif %}
+</p>
+{% endif %}
+
+<!-- Tableaux par silo -->
+{% for r in resultats %}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-white fw-semibold fs-6">
+    <i class="bi bi-building me-2"></i>{{ r.site.nom }}
+  </div>
+  <div class="card-body p-0">
+    <div class="row g-0">
+      <!-- Pannes -->
+      <div class="col-md-4 border-end p-3">
+        <h6 class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Pannes</h6>
+        <dl class="row mb-0 small">
+          <dt class="col-7">Total</dt><dd class="col-5 fw-bold">{{ r.pannes_total }}</dd>
+          <dt class="col-7">Résolues</dt><dd class="col-5">{{ r.pannes_resolues }}</dd>
+          <dt class="col-7">Critiques</dt><dd class="col-5 text-danger">{{ r.pannes_critiques }}</dd>
+          <dt class="col-7">Durée moy. résolution</dt>
+          <dd class="col-5">{% if r.duree_moy_resolution %}{{ r.duree_moy_resolution }} j{% else %}—{% endif %}</dd>
+        </dl>
+      </div>
+      <!-- Préventives -->
+      <div class="col-md-4 border-end p-3">
+        <h6 class="text-success"><i class="bi bi-calendar-check me-1"></i>Préventives</h6>
+        <dl class="row mb-0 small">
+          <dt class="col-7">Total</dt><dd class="col-5 fw-bold">{{ r.prev_total }}</dd>
+          <dt class="col-7">Effectuées</dt><dd class="col-5 text-success">{{ r.prev_effectuees }}</dd>
+          <dt class="col-7">En retard</dt><dd class="col-5 text-warning">{{ r.prev_retard }}</dd>
+          <dt class="col-7">Taux de respect</dt>
+          <dd class="col-5">{% if r.taux_respect is not None %}{{ r.taux_respect }} %{% else %}—{% endif %}</dd>
+        </dl>
+      </div>
+      <!-- Factures -->
+      <div class="col-md-4 p-3">
+        <h6 class="text-primary"><i class="bi bi-receipt me-1"></i>Factures</h6>
+        <dl class="row mb-0 small">
+          <dt class="col-7">Nombre</dt><dd class="col-5 fw-bold">{{ r.fact_total }}</dd>
+          <dt class="col-7">Montant TTC</dt><dd class="col-5 fw-bold">{{ r.fact_montant_ttc|floatformat:2 }} €</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{% elif request.GET %}
+<div class="alert alert-info">Aucune donnée pour les critères sélectionnés.</div>
+{% else %}
+<div class="alert alert-light border text-center py-5">
+  <i class="bi bi-funnel fs-1 text-muted d-block mb-2"></i>
+  Utilisez les filtres ci-dessus pour afficher les statistiques.
+</div>
+{% endif %}
+{% endblock %}

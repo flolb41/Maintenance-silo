@@ -107,12 +107,52 @@
     </div>
     <!-- Créer facture (admin uniquement) -->
     {% if profile and profile.role == 'admin' %}
-    <div class="card border-0 shadow-sm">
+    <div class="card border-0 shadow-sm mb-3">
       <div class="card-header bg-white fw-semibold">Facture</div>
       <div class="card-body">
         <a href="{% url 'facture_create' %}?preventive={{ preventive.pk }}" class="btn btn-outline-success btn-sm w-100">
           <i class="bi bi-receipt me-1"></i>Créer une facture
         </a>
+      </div>
+    </div>
+
+    <!-- Rappels -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">Rappels</span>
+        <a href="{% url 'rappel_create' preventive.pk %}" class="btn btn-outline-primary btn-sm">
+          <i class="bi bi-bell-fill me-1"></i>Ajouter
+        </a>
+      </div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          {% for rappel in preventive.rappels.all %}
+          <li class="list-group-item d-flex justify-content-between align-items-start">
+            <div>
+              <div class="fw-semibold small">{{ rappel.get_delai_display }}</div>
+              <div class="text-muted small">
+                Envoi prévu : {{ rappel.date_envoi_prevue }}<br>
+                {% if rappel.envoye_le %}
+                  <span class="badge bg-success">Envoyé le {{ rappel.envoye_le|date:"d/m/Y H:i" }}</span>
+                {% else %}
+                  <span class="badge bg-warning text-dark">En attente</span>
+                {% endif %}
+              </div>
+              {% if rappel.message_personnalise %}
+              <small class="text-muted fst-italic">{{ rappel.message_personnalise|truncatechars:60 }}</small>
+              {% endif %}
+            </div>
+            <form method="post" action="{% url 'rappel_delete' rappel.pk %}" class="ms-2">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Supprimer ce rappel ?')">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+          </li>
+          {% empty %}
+          <li class="list-group-item text-muted small">Aucun rappel configuré.</li>
+          {% endfor %}
+        </ul>
       </div>
     </div>
     {% endif %}

@@ -42,6 +42,16 @@ urlpatterns = [
     path('factures/<int:pk>/', views.FactureDetailView.as_view(), name='facture_detail'),
     path('factures/<int:pk>/modifier/', views.FactureUpdateView.as_view(), name='facture_update'),
 
+    # Rappels préventives
+    path('preventives/<int:preventive_pk>/rappels/nouveau/', views.rappel_create, name='rappel_create'),
+    path('rappels/<int:pk>/supprimer/', views.rappel_delete, name='rappel_delete'),
+
+    # Statistiques
+    path('statistiques/', views.statistiques, name='statistiques'),
+
+    # OCR extraction facture PDF
+    path('api/extraire-facture/', views.api_extraire_facture, name='api_extraire_facture'),
+
     # Notifications
     path('notifications/', views.notifications, name='notifications'),
     path('notifications/<int:pk>/lue/', views.marquer_notif_lue, name='notif_lue'),

@@ -375,6 +375,64 @@ class Facture(models.Model):
             raise ValidationError("La facture doit être liée à une panne ou à une maintenance préventive.")
 
 
+class RappelPreventive(models.Model):
+    DELAI_J30 = 'j30'
+    DELAI_J14 = 'j14'
+    DELAI_J7 = 'j7'
+    DELAI_J3 = 'j3'
+    DELAI_J1 = 'j1'
+    DELAI_ECHEANCE = 'j0'
+    DELAIS = [
+        (DELAI_J30, '30 jours avant'),
+        (DELAI_J14, '14 jours avant'),
+        (DELAI_J7, '7 jours avant'),
+        (DELAI_J3, '3 jours avant'),
+        (DELAI_J1, '1 jour avant'),
+        (DELAI_ECHEANCE, 'Le jour J'),
+    ]
+
+    DELAI_JOURS = {
+        DELAI_J30: 30,
+        DELAI_J14: 14,
+        DELAI_J7: 7,
+        DELAI_J3: 3,
+        DELAI_J1: 1,
+        DELAI_ECHEANCE: 0,
+    }
+
+    preventive = models.ForeignKey(
+        MaintenancePreventive, on_delete=models.CASCADE, related_name='rappels'
+    )
+    destinataires = models.ManyToManyField(
+        'auth.User', blank=True, related_name='rappels_preventive',
+        help_text='Responsables silo à notifier'
+    )
+    delai = models.CharField(max_length=10, choices=DELAIS, default=DELAI_J7)
+    message_personnalise = models.TextField(blank=True)
+    envoye_le = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, related_name='rappels_crees'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['delai']
+        verbose_name = 'Rappel préventive'
+        verbose_name_plural = 'Rappels préventives'
+
+    def __str__(self):
+        return f"Rappel {self.get_delai_display()} — {self.preventive.titre}"
+
+    def date_envoi_prevue(self):
+        from datetime import timedelta
+        jours = self.DELAI_JOURS.get(self.delai, 0)
+        return self.preventive.date_echeance - timedelta(days=jours)
+
+    def doit_etre_envoye(self):
+        from datetime import date
+        return self.envoye_le is None and self.date_envoi_prevue() <= date.today()
+
+
 class Notification(models.Model):
     TYPE_PANNE = 'panne'
     TYPE_PREVENTIVE = 'preventive'

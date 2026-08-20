@@ -9,7 +9,28 @@
         <i class="bi bi-receipt me-2"></i>{% if object %}Modifier la facture{% else %}Nouvelle facture{% endif %}
       </div>
       <div class="card-body">
-        <form method="post" enctype="multipart/form-data">
+
+        <!-- Zone upload PDF avec OCR -->
+        {% if not object %}
+        <div class="card bg-light border-0 mb-4">
+          <div class="card-body">
+            <h6 class="fw-semibold mb-2"><i class="bi bi-magic me-1"></i>Reconnaissance automatique depuis un PDF</h6>
+            <p class="text-muted small mb-2">
+              Importez le PDF de la facture fournisseur : les champs seront pré-remplis automatiquement
+              (fournisseur, date, numéro, montant TTC). Un fichier = une facture (multi-pages supporté).
+            </p>
+            <div class="input-group">
+              <input type="file" id="pdf_ocr_input" class="form-control" accept=".pdf">
+              <button type="button" id="btn_ocr" class="btn btn-outline-primary" disabled>
+                <i class="bi bi-search me-1"></i>Extraire
+              </button>
+            </div>
+            <div id="ocr_status" class="mt-2 small text-muted d-none"></div>
+          </div>
+        </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" id="facture_form">
           {% csrf_token %}
           <div class="row g-3">
             {% for field in form %}
@@ -34,4 +55,82 @@
     </div>
   </div>
 </div>
+
+{% if not object %}
+<script>
+(function () {
+  const input = document.getElementById('pdf_ocr_input');
+  const btn = document.getElementById('btn_ocr');
+  const status = document.getElementById('ocr_status');
+
+  if (!input) return;
+
+  input.addEventListener('change', function () {
+    btn.disabled = !input.files.length;
+  });
+
+  btn.addEventListener('click', function () {
+    if (!input.files.length) return;
+
+    const fd = new FormData();
+    fd.append('fichier', input.files[0]);
+    fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Analyse…';
+    status.textContent = '';
+    status.classList.remove('d-none', 'text-danger', 'text-success', 'text-muted');
+    status.classList.add('text-muted');
+
+    fetch('{% url "api_extraire_facture" %}', { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) {
+          status.textContent = 'Erreur : ' + data.error;
+          status.classList.add('text-danger');
+          status.classList.remove('d-none');
+          return;
+        }
+
+        let remplis = [];
+        const map = {
+          'fournisseur': 'id_fournisseur',
+          'date_facture': 'id_date_facture',
+          'numero': 'id_numero',
+          'montant_ttc': 'id_montant_ttc',
+        };
+        for (const [key, fieldId] of Object.entries(map)) {
+          if (data[key]) {
+            const el = document.getElementById(fieldId);
+            if (el) { el.value = data[key]; remplis.push(key); }
+          }
+        }
+
+        // Copier le fichier dans le champ fichier du formulaire
+        const fichierField = document.getElementById('id_fichier');
+        if (fichierField) {
+          const dt = new DataTransfer();
+          dt.items.add(input.files[0]);
+          fichierField.files = dt.files;
+        }
+
+        status.textContent = remplis.length
+          ? '✓ Champs extraits : ' + remplis.join(', ')
+          : 'Aucun champ reconnu — veuillez remplir manuellement.';
+        status.classList.add(remplis.length ? 'text-success' : 'text-warning');
+        status.classList.remove('d-none');
+      })
+      .catch(() => {
+        status.textContent = 'Erreur lors de la communication avec le serveur.';
+        status.classList.add('text-danger');
+        status.classList.remove('d-none');
+      })
+      .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-search me-1"></i>Extraire';
+      });
+  });
+})();
+</script>
+{% endif %}
 {% endblock %}

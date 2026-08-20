@@ -4,7 +4,7 @@ from django.contrib.auth.forms import UserCreationForm
 from decimal import Decimal
 from .models import (
     Site, Equipement, Panne, PanneMedia, MaintenancePreventive,
-    PreventiveMedia, Facture, Profile
+    PreventiveMedia, Facture, Profile, RappelPreventive
 )
 
 
@@ -179,6 +179,48 @@ class FactureForm(forms.ModelForm):
         return cleaned_data
 
 
+class RappelPreventiveForm(forms.ModelForm):
+    class Meta:
+        model = RappelPreventive
+        fields = ['delai', 'destinataires', 'message_personnalise']
+        widgets = {
+            'destinataires': forms.CheckboxSelectMultiple,
+            'message_personnalise': forms.Textarea(attrs={'rows': 3}),
+        }
+
+    def __init__(self, *args, preventive=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        site = preventive.equipement.site if preventive else None
+        if site:
+            self.fields['destinataires'].queryset = User.objects.filter(
+                profile__role='silo', profile__sites=site
+            ).select_related('profile')
+        else:
+            self.fields['destinataires'].queryset = User.objects.filter(
+                profile__role='silo'
+            ).select_related('profile')
+        self.fields['destinataires'].required = False
+
+
+class StatistiquesFilterForm(forms.Form):
+    site = forms.ModelChoiceField(
+        queryset=Site.objects.all(),
+        required=False,
+        label='Silo / Site',
+        empty_label='Tous les sites',
+    )
+    date_debut = forms.DateField(
+        required=False,
+        label='Date début',
+        widget=forms.DateInput(attrs={'type': 'date'}),
+    )
+    date_fin = forms.DateField(
+        required=False,
+        label='Date fin',
+        widget=forms.DateInput(attrs={'type': 'date'}),
+    )
+
+
 class ProfileUpdateForm(forms.ModelForm):
     first_name = forms.CharField(max_length=150, label='Prénom', required=False)
     last_name = forms.CharField(max_length=150, label='Nom', required=False)
@@ -259,7 +301,8 @@ _originals = {}
 
 for _FormClass in [
     SiteForm, EquipementForm, PanneForm, PanneAffectationForm,
-    MaintenancePreventiveForm, FactureForm, ProfileUpdateForm, UtilisateurCreateForm
+    MaintenancePreventiveForm, FactureForm, ProfileUpdateForm, UtilisateurCreateForm,
+    RappelPreventiveForm, StatistiquesFilterForm
 ]:
     _orig = _FormClass.__init__
 

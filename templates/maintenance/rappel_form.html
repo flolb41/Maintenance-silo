@@ -1,0 +1,56 @@
+{% extends 'maintenance/base.html' %}
+{% block title %}Rappel préventive{% endblock %}
+{% block active_preventives %}active{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold">
+        <i class="bi bi-bell me-2"></i>Configurer un rappel
+      </div>
+      <div class="card-body">
+        <div class="alert alert-light border mb-3">
+          <strong>Préventive :</strong> {{ preventive.titre }}<br>
+          <strong>Équipement :</strong> {{ preventive.equipement }}<br>
+          <strong>Échéance :</strong> {{ preventive.date_echeance }}
+        </div>
+        <form method="post">
+          {% csrf_token %}
+          {% for field in form %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold">{{ field.label }}</label>
+            {% if field.field.widget.input_type == 'select' %}
+              <select name="{{ field.html_name }}" class="form-select">
+                {% for val, lbl in field.field.choices %}
+                  <option value="{{ val }}" {% if field.value == val %}selected{% endif %}>{{ lbl }}</option>
+                {% endfor %}
+              </select>
+            {% elif field.field.widget.attrs.rows %}
+              <textarea name="{{ field.html_name }}" class="form-control" rows="{{ field.field.widget.attrs.rows }}">{{ field.value|default:'' }}</textarea>
+            {% else %}
+              {{ field }}
+            {% endif %}
+            {% if field.help_text %}<div class="form-text text-muted">{{ field.help_text }}</div>{% endif %}
+            {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+          {% endfor %}
+
+          <div class="d-flex gap-2 mt-3">
+            <button type="submit" name="envoyer_maintenant" value="1" class="btn btn-primary">
+              <i class="bi bi-send me-1"></i>Créer et envoyer maintenant
+            </button>
+            <button type="submit" class="btn btn-outline-secondary">
+              <i class="bi bi-clock me-1"></i>Programmer seulement
+            </button>
+            <a href="{% url 'preventive_detail' preventive.pk %}" class="btn btn-light">Annuler</a>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="alert alert-info mt-3 small">
+      <i class="bi bi-info-circle me-1"></i>
+      Les rappels programmés sont envoyés automatiquement via la commande <code>python manage.py send_rappels</code> (à planifier en cron).
+    </div>
+  </div>
+</div>
+{% endblock %}

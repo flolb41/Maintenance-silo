@@ -60,6 +60,11 @@
         </li>
         {% if role == 'admin' %}
         <li class="nav-item">
+          <a class="nav-link {% block active_stats %}{% endblock %}" href="{% url 'statistiques' %}">
+            <i class="bi bi-bar-chart-line"></i> Statistiques
+          </a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link {% block active_sites %}{% endblock %}" href="{% url 'site_list' %}">
             <i class="bi bi-building"></i> Sites
           </a>
@@ -152,11 +157,15 @@
     body.appendChild(titleEl);
     body.appendChild(msgEl);
     if (lien) {
-      const link = document.createElement('a');
-      link.href = lien;
-      link.className = 'd-block mt-1 text-white text-decoration-underline';
-      link.textContent = 'Voir';
-      body.appendChild(link);
+      // Accepter uniquement les URL relatives (pas de javascript: ou //externe)
+      const safeLien = (typeof lien === 'string' && /^\/[^/\\]/.test(lien)) ? lien : '';
+      if (safeLien) {
+        const link = document.createElement('a');
+        link.href = safeLien;
+        link.className = 'd-block mt-1 text-white text-decoration-underline';
+        link.textContent = 'Voir';
+        body.appendChild(link);
+      }
     }
     const btn = document.createElement('button');
     btn.type = 'button';

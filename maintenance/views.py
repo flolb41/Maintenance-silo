@@ -12,12 +12,14 @@ from datetime import date, timedelta
 
 from .models import (
     Site, Equipement, Panne, HistoriquePanne, PanneMedia,
-    MaintenancePreventive, HistoriquePreventive, Facture, Notification, Profile
+    MaintenancePreventive, HistoriquePreventive, Facture, Notification, Profile,
+    RappelPreventive
 )
 from .forms import (
     SiteForm, EquipementForm, PanneForm, PanneAffectationForm, PanneStatutForm,
     PanneMediaForm, MaintenancePreventiveForm, PreventiveStatutForm,
-    FactureForm, ProfileUpdateForm, UtilisateurCreateForm
+    FactureForm, ProfileUpdateForm, UtilisateurCreateForm,
+    RappelPreventiveForm, StatistiquesFilterForm
 )
 from .mixins import AdminRequiredMixin, MaintenanceRequiredMixin, SiloRequiredMixin, get_sites_utilisateur
 
@@ -699,3 +701,342 @@ def mon_profil(request):
         form = ProfileUpdateForm(instance=profile, user=request.user)
 
     return render(request, 'maintenance/mon_profil.html', {'form': form, 'profile': profile})
+
+
+# ─────────────────────────────────────────────
+# RAPPELS PRÉVENTIVES (admin seulement)
+# ─────────────────────────────────────────────
+
+@login_required
+def rappel_create(request, preventive_pk):
+    """Créer un rappel sur une maintenance préventive et l'envoyer immédiatement si souhaité."""
+    from .signals import creer_notif
+    preventive = get_object_or_404(MaintenancePreventive, pk=preventive_pk)
+    try:
+        if not request.user.profile.is_admin():
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied
+    except Exception:
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied
+
+    if request.method == 'POST':
+        form = RappelPreventiveForm(request.POST, preventive=preventive)
+        if form.is_valid():
+            rappel = form.save(commit=False)
+            rappel.preventive = preventive
+            rappel.created_by = request.user
+            rappel.save()
+            form.save_m2m()
+
+            # Envoi immédiat si demandé
+            if request.POST.get('envoyer_maintenant'):
+                destinataires = rappel.destinataires.all()
+                if not destinataires.exists():
+                    # Fallback : agents silo du site
+                    destinataires = preventive.equipement.site.profiles.filter(
+                        role='silo'
+                    ).values_list('user', flat=True)
+                    from django.contrib.auth.models import User as _User
+                    destinataires = _User.objects.filter(pk__in=destinataires)
+
+                msg = rappel.message_personnalise or (
+                    f"Rappel maintenance préventive : {preventive.titre}\n"
+                    f"Équipement : {preventive.equipement}\n"
+                    f"Échéance : {preventive.date_echeance}"
+                )
+                lien = f'/preventives/{preventive.pk}/'
+                for user in destinataires:
+                    creer_notif(
+                        user,
+                        Notification.TYPE_PREVENTIVE,
+                        f'Rappel préventive : {preventive.titre}',
+                        msg,
+                        lien,
+                    )
+                rappel.envoye_le = timezone.now()
+                rappel.save(update_fields=['envoye_le'])
+                messages.success(request, f'Rappel créé et envoyé à {destinataires.count()} destinataire(s).')
+            else:
+                messages.success(request, 'Rappel programmé.')
+            return redirect('preventive_detail', pk=preventive_pk)
+    else:
+        form = RappelPreventiveForm(preventive=preventive)
+
+    return render(request, 'maintenance/rappel_form.html', {
+        'form': form,
+        'preventive': preventive,
+    })
+
+
+@login_required
+def rappel_delete(request, pk):
+    rappel = get_object_or_404(RappelPreventive, pk=pk)
+    try:
+        if not request.user.profile.is_admin():
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied
+    except Exception:
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied
+    prev_pk = rappel.preventive.pk
+    rappel.delete()
+    messages.success(request, 'Rappel supprimé.')
+    return redirect('preventive_detail', pk=prev_pk)
+
+
+# ─────────────────────────────────────────────
+# STATISTIQUES PAR SILO / PÉRIODE (admin seulement)
+# ─────────────────────────────────────────────
+
+import csv
+from django.http import HttpResponse
+from django.db.models import Avg, Sum, FloatField, ExpressionWrapper, F
+from django.db.models.functions import Cast
+
+
+@login_required
+def statistiques(request):
+    try:
+        if not request.user.profile.is_admin():
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied
+    except Exception:
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied
+
+    form = StatistiquesFilterForm(request.GET or None)
+    ctx = {'form': form, 'resultats': None}
+
+    if form.is_valid():
+        site_filtre = form.cleaned_data.get('site')
+        date_debut = form.cleaned_data.get('date_debut')
+        date_fin = form.cleaned_data.get('date_fin')
+
+        sites = Site.objects.all()
+        if site_filtre:
+            sites = sites.filter(pk=site_filtre.pk)
+
+        resultats = []
+        for site in sites:
+            # Pannes
+            pannes_qs = Panne.objects.filter(equipement__site=site)
+            if date_debut:
+                pannes_qs = pannes_qs.filter(date_signalement__date__gte=date_debut)
+            if date_fin:
+                pannes_qs = pannes_qs.filter(date_signalement__date__lte=date_fin)
+
+            pannes_total = pannes_qs.count()
+            pannes_resolues = pannes_qs.filter(statut__in=['resolue', 'fermee']).count()
+            pannes_critiques = pannes_qs.filter(priorite='critique').count()
+
+            # Durée moyenne résolution (en jours)
+            resolues_avec_date = pannes_qs.filter(
+                statut__in=['resolue', 'fermee'],
+                date_resolution__isnull=False
+            )
+            duree_moy = None
+            if resolues_avec_date.exists():
+                total_jours = sum(
+                    (p.date_resolution.date() - p.date_signalement.date()).days
+                    for p in resolues_avec_date
+                )
+                duree_moy = round(total_jours / resolues_avec_date.count(), 1)
+
+            # Préventives
+            prev_qs = MaintenancePreventive.objects.filter(equipement__site=site)
+            if date_debut:
+                prev_qs = prev_qs.filter(date_echeance__gte=date_debut)
+            if date_fin:
+                prev_qs = prev_qs.filter(date_echeance__lte=date_fin)
+
+            prev_total = prev_qs.count()
+            prev_effectuees = prev_qs.filter(statut__in=['effectuee', 'validee', 'archivee']).count()
+            prev_retard = prev_qs.filter(statut='en_retard').count()
+            taux_respect = round(prev_effectuees / prev_total * 100, 1) if prev_total else None
+
+            # Factures
+            fact_qs = Facture.objects.filter(
+                Q(panne__equipement__site=site) | Q(preventive__equipement__site=site)
+            ).distinct()
+            if date_debut:
+                fact_qs = fact_qs.filter(date_facture__gte=date_debut)
+            if date_fin:
+                fact_qs = fact_qs.filter(date_facture__lte=date_fin)
+
+            fact_total = fact_qs.count()
+            fact_montant_ttc = fact_qs.aggregate(total=Sum('montant_ttc'))['total'] or 0
+
+            resultats.append({
+                'site': site,
+                'pannes_total': pannes_total,
+                'pannes_resolues': pannes_resolues,
+                'pannes_critiques': pannes_critiques,
+                'duree_moy_resolution': duree_moy,
+                'prev_total': prev_total,
+                'prev_effectuees': prev_effectuees,
+                'prev_retard': prev_retard,
+                'taux_respect': taux_respect,
+                'fact_total': fact_total,
+                'fact_montant_ttc': fact_montant_ttc,
+            })
+
+        ctx['resultats'] = resultats
+        ctx['date_debut'] = date_debut
+        ctx['date_fin'] = date_fin
+
+        # Export CSV
+        if request.GET.get('export') == 'csv':
+            response = HttpResponse(content_type='text/csv; charset=utf-8')
+            response['Content-Disposition'] = 'attachment; filename="statistiques.csv"'
+            response.write('\ufeff')  # BOM pour Excel
+            writer = csv.writer(response, delimiter=';')
+            writer.writerow([
+                'Site', 'Pannes total', 'Pannes résolues', 'Pannes critiques',
+                'Durée moy. résolution (j)', 'Préventives total', 'Préventives effectuées',
+                'Préventives en retard', 'Taux respect (%)', 'Factures', 'Montant TTC (€)'
+            ])
+            for r in resultats:
+                writer.writerow([
+                    r['site'].nom, r['pannes_total'], r['pannes_resolues'],
+                    r['pannes_critiques'], r['duree_moy_resolution'] or '',
+                    r['prev_total'], r['prev_effectuees'], r['prev_retard'],
+                    r['taux_respect'] or '', r['fact_total'], r['fact_montant_ttc'],
+                ])
+            return response
+
+    return render(request, 'maintenance/statistiques.html', ctx)
+
+
+# ─────────────────────────────────────────────
+# OCR / EXTRACTION FACTURE PDF
+# ─────────────────────────────────────────────
+
+import re
+import json
+import tempfile
+import os
+from django.views.decorators.http import require_POST
+
+
+@login_required
+@require_POST
+def api_extraire_facture(request):
+    """
+    Reçoit un fichier PDF en POST, extrait les champs clés via pdfplumber
+    et retourne un JSON avec fournisseur, date_facture, numero, montant_ttc.
+    Un fichier = une facture (potentiellement plusieurs pages).
+    """
+    try:
+        if not request.user.profile.is_admin():
+            return HttpResponse(status=403)
+    except Exception:
+        return HttpResponse(status=403)
+
+    fichier = request.FILES.get('fichier')
+    if not fichier:
+        return HttpResponse(json.dumps({'error': 'Aucun fichier'}), content_type='application/json', status=400)
+
+    try:
+        import pdfplumber
+    except ImportError:
+        return HttpResponse(
+            json.dumps({'error': 'pdfplumber non installé'}),
+            content_type='application/json', status=500
+        )
+
+    # Écriture temporaire
+    suffix = '.pdf'
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        for chunk in fichier.chunks():
+            tmp.write(chunk)
+        tmp_path = tmp.name
+
+    try:
+        texte_complet = ''
+        with pdfplumber.open(tmp_path) as pdf:
+            for page in pdf.pages:
+                t = page.extract_text()
+                if t:
+                    texte_complet += t + '\n'
+    finally:
+        os.unlink(tmp_path)
+
+    resultat = _extraire_champs_facture(texte_complet)
+    return HttpResponse(json.dumps(resultat, ensure_ascii=False), content_type='application/json')
+
+
+def _extraire_champs_facture(texte):
+    """Extrait fournisseur, date, numéro et montant TTC depuis le texte d'une facture."""
+    result = {}
+
+    # ── Numéro de facture ──
+    patterns_numero = [
+        r'(?:facture|invoice|n[o°]\.?\s*facture)[^\d\n]*([A-Z0-9\-/]{4,25})',
+        r'(?:ref|réf|reference|référence)[^\d\n]*([A-Z0-9\-/]{4,25})',
+        r'\b(FA\s*[-/]?\s*\d{4,})\b',
+        r'\b(INV\s*[-/]?\s*\d{4,})\b',
+        r'\bN[o°]?\s*:?\s*([A-Z0-9\-/]{5,20})\b',
+    ]
+    for pat in patterns_numero:
+        m = re.search(pat, texte, re.IGNORECASE)
+        if m:
+            result['numero'] = m.group(1).strip().replace(' ', '')
+            break
+
+    # ── Date de facture ──
+    patterns_date = [
+        r'(?:date\s+(?:de\s+)?(?:facture|émission|emission))[^\d\n]*(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4})',
+        r'(?:le|date)[^\d\n]{0,10}(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4})',
+        r'\b(\d{1,2}/\d{1,2}/\d{4})\b',
+        r'\b(\d{1,2}-\d{1,2}-\d{4})\b',
+        r'\b(\d{1,2}\.\d{1,2}\.\d{4})\b',
+    ]
+    for pat in patterns_date:
+        m = re.search(pat, texte, re.IGNORECASE)
+        if m:
+            raw = m.group(1).strip()
+            # Normaliser en YYYY-MM-DD
+            for sep in ('/', '-', '.'):
+                if sep in raw:
+                    parts = raw.split(sep)
+                    if len(parts) == 3:
+                        j, mo, an = parts
+                        if len(an) == 2:
+                            an = '20' + an
+                        try:
+                            result['date_facture'] = f"{an}-{mo.zfill(2)}-{j.zfill(2)}"
+                        except Exception:
+                            pass
+                    break
+            break
+
+    # ── Montant TTC ──
+    patterns_ttc = [
+        r'(?:total\s+)?(?:ttc|t\.t\.c\.?|toutes?\s+taxes?\s+comprises?)[\s:]*([0-9\s]+[,\.][0-9]{2})\s*(?:€|eur)?',
+        r'(?:net\s+à\s+payer|montant\s+total)[\s:]*([0-9\s]+[,\.][0-9]{2})',
+        r'(?:total)[^\d\n]*([0-9\s]{2,10}[,\.][0-9]{2})\s*€',
+    ]
+    for pat in patterns_ttc:
+        m = re.search(pat, texte, re.IGNORECASE)
+        if m:
+            raw = m.group(1).strip().replace(' ', '').replace(',', '.')
+            try:
+                result['montant_ttc'] = str(round(float(raw), 2))
+            except ValueError:
+                pass
+            break
+
+    # ── Fournisseur : première ligne non vide significative ──
+    lignes = [l.strip() for l in texte.split('\n') if l.strip() and len(l.strip()) > 3]
+    # Ignorer les lignes qui ressemblent à des dates, numéros, mots-clés
+    mots_ignores = re.compile(
+        r'^(facture|invoice|bon\s+de\s+commande|devis|date|n[o°]|ref|page|\d)',
+        re.IGNORECASE
+    )
+    for ligne in lignes[:10]:
+        if not mots_ignores.match(ligne) and len(ligne) > 4:
+            result['fournisseur'] = ligne[:100]
+            break
+
+    return result
