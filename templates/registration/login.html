@@ -1,34 +1,37 @@
 {% extends "base.html" %}
 {% block title %}Connexion{% endblock %}
 {% block content %}
-<div class="row justify-content-center mt-5">
-    <div class="col-md-5">
-        <div class="card shadow-sm">
-            <div class="card-header bg-dark text-white text-center">
-                <h4><i class="bi bi-gear-wide-connected"></i> Maintenance Silo</h4>
-                <p class="mb-0 text-muted small">Connexion</p>
-            </div>
-            <div class="card-body p-4">
+<div class="auth-layout">
+    <section class="auth-panel" aria-labelledby="login-title">
+        <div class="auth-mark"><i class="bi bi-gear-wide-connected"></i></div>
+        <div class="mb-4">
+            <p class="eyebrow mb-2">Maintenance industrielle</p>
+            <h1 class="h3 mb-2" id="login-title">Accéder à votre espace</h1>
+            <p class="text-secondary mb-0">Suivez les pannes, interventions et opérations préventives de vos sites.</p>
+        </div>
+        <div>
                 {% if form.errors %}
-                <div class="alert alert-danger">Identifiants incorrects. Veuillez réessayer.</div>
+                <div class="alert alert-danger" role="alert">
+                    <i class="bi bi-exclamation-circle me-2"></i>Identifiants incorrects. Vérifiez vos informations.
+                </div>
                 {% endif %}
                 <form method="post">
                     {% csrf_token %}
                     <div class="mb-3">
-                        <label class="form-label">Nom d'utilisateur</label>
-                        <input type="text" name="username" class="form-control" autofocus required>
+                        <label class="form-label" for="id_username">Nom d'utilisateur</label>
+                        <input id="id_username" type="text" name="username" class="form-control form-control-lg" autocomplete="username" autofocus required>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Mot de passe</label>
-                        <input type="password" name="password" class="form-control" required>
+                    <div class="mb-4">
+                        <label class="form-label" for="id_password">Mot de passe</label>
+                        <input id="id_password" type="password" name="password" class="form-control form-control-lg" autocomplete="current-password" required>
+                        <div class="text-end mt-2"><a href="{% url 'password_reset' %}" class="small">Mot de passe oublié ?</a></div>
                     </div>
                     <input type="hidden" name="next" value="{{ next }}">
                     <div class="d-grid">
-                        <button type="submit" class="btn btn-dark">Se connecter</button>
+                        <button type="submit" class="btn btn-primary btn-lg">Se connecter</button>
                     </div>
                 </form>
-            </div>
         </div>
-    </div>
+    </section>
 </div>
 {% endblock %}

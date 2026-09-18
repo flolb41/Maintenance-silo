@@ -39,25 +39,28 @@ class Command(BaseCommand):
         dry_run = options["dry_run"]
 
         taches = MaintenancePreventive.objects.filter(
-            echeance__lt=maintenant,
+            date_echeance__lt=maintenant,
         ).exclude(statut__in=STATUTS_TERMINAUX)
 
         count = taches.count()
         if count == 0:
-            self.stdout.write(self.style.SUCCESS("Aucune tâche en retard détectée."))
+            self.stdout.write(self.style.SUCCESS(
+                "Aucune tâche en retard détectée."))
             return
 
         if dry_run:
-            self.stdout.write(self.style.WARNING(f"[dry-run] {count} tâche(s) seraient marquées EN_RETARD :"))
+            self.stdout.write(self.style.WARNING(
+                f"[dry-run] {count} tâche(s) seraient marquées EN_RETARD :"))
             for t in taches:
-                self.stdout.write(f"  #{t.pk} {t.titre} (échéance : {t.echeance})")
+                self.stdout.write(
+                    f"  #{t.pk} {t.titre} (échéance : {t.date_echeance})")
             return
 
         marquees = 0
         for tache in taches:
             ancien_statut = tache.statut
             tache.statut = MaintenancePreventive.Statut.EN_RETARD
-            tache.save(update_fields=["statut", "modifiee_le"])
+            tache.save(update_fields=["statut", "updated_at"])
             marquees += 1
 
         self.stdout.write(

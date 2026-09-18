@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Parc de véhicules{% endblock %}
+{% block content %}
+<header class="page-heading">
+    <div><p class="eyebrow mb-1">Gestion de flotte</p><h1 class="page-title">Poids lourds</h1><p class="page-subtitle">Suivez les poids lourds et leurs prochaines échéances.</p></div>
+    <a class="btn btn-primary" href="{% url 'vehicules:ajouter' %}"><i class="bi bi-plus-lg me-1"></i>Ajouter un véhicule</a>
+</header>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3"><div class="card metric-card metric-success h-100"><div class="card-body d-flex justify-content-between"><div><div class="metric-label">Parc total</div><div class="metric-value">{{ total_vehicules }}</div></div><i class="bi bi-truck metric-icon"></i></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card metric-card metric-warning h-100"><div class="card-body d-flex justify-content-between"><div><div class="metric-label">Poids lourds</div><div class="metric-value">{{ total_pl }}</div></div><i class="bi bi-truck-front metric-icon"></i></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card metric-card metric-info h-100"><div class="card-body d-flex justify-content-between"><div><div class="metric-label">Engins de manutention</div><div class="metric-value">{{ total_engins }}</div></div><i class="bi bi-boxes metric-icon"></i></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card metric-card metric-info h-100"><div class="card-body d-flex justify-content-between"><div><div class="metric-label">Remorques poids lourd</div><div class="metric-value">{{ total_remorques }}</div></div><i class="bi bi-trailer metric-icon"></i></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card metric-card metric-danger h-100"><div class="card-body d-flex justify-content-between"><div><div class="metric-label">Échéances proches</div><div class="metric-value">{{ alertes }}</div></div><i class="bi bi-calendar2-exclamation metric-icon"></i></div></div></div>
+</div>
+
+<form method="get" class="toolbar mb-3">
+    <div class="flex-grow-1"><label class="form-label" for="vehicule-q">Recherche</label><input id="vehicule-q" class="form-control" type="search" name="q" value="{{ current_q }}" placeholder="Immatriculation, marque, modèle ou VIN"></div>
+    <div><label class="form-label" for="vehicule-categorie">Catégorie</label><select id="vehicule-categorie" class="form-select" name="categorie"><option value="">Toutes</option>{% for value, label in categories %}<option value="{{ value }}" {% if current_categorie == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div><label class="form-label" for="vehicule-statut">Statut</label><select id="vehicule-statut" class="form-select" name="statut"><option value="">Tous</option>{% for value, label in statuts %}<option value="{{ value }}" {% if current_statut == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div><label class="form-label" for="vehicule-site">Site</label><select id="vehicule-site" class="form-select" name="site"><option value="">Tous</option>{% for site in sites %}<option value="{{ site.pk }}" {% if current_site == site.pk|stringformat:'s' %}selected{% endif %}>{{ site.nom }}</option>{% endfor %}</select></div>
+    <div class="action-group"><button class="btn btn-primary" type="submit"><i class="bi bi-funnel me-1"></i>Filtrer</button><a class="btn btn-outline-secondary" href="{% url 'vehicules:liste' %}" title="Réinitialiser"><i class="bi bi-arrow-counterclockwise"></i></a></div>
+</form>
+
+<div class="table-shell"><div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>Véhicule</th><th>Catégorie</th><th>Site</th><th>Statut</th><th>Kilométrage</th><th>Échéances</th><th></th></tr></thead><tbody>
+{% for vehicule in vehicules %}<tr>
+    <td><a class="fw-semibold text-decoration-none" href="{% url 'vehicules:detail' vehicule.pk %}">{{ vehicule.immatriculation|default:"Sans immatriculation" }}</a><div class="small text-muted">{{ vehicule.marque }} {{ vehicule.modele }}</div></td>
+    <td><span class="badge status-neutral">{{ vehicule.get_categorie_display }}</span></td><td>{{ vehicule.site.nom }}</td>
+    <td><span class="badge status-{% if vehicule.statut == 'disponible' %}success{% elif vehicule.statut == 'hors_service' %}danger{% elif vehicule.statut == 'en_entretien' %}warning{% else %}info{% endif %}">{{ vehicule.get_statut_display }}</span></td>
+    <td>{{ vehicule.kilometrage }} km</td><td>{% if vehicule.alerte_echeance %}<span class="badge status-danger"><i class="bi bi-exclamation-triangle me-1"></i>À traiter</span>{% else %}<span class="text-muted">À jour</span>{% endif %}</td>
+    <td class="text-end"><div class="action-group justify-content-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'vehicules:detail' vehicule.pk %}" title="Ouvrir"><i class="bi bi-arrow-right"></i></a><a class="btn btn-sm btn-outline-secondary" href="{% url 'vehicules:modifier' vehicule.pk %}" title="Modifier"><i class="bi bi-pencil"></i></a><a class="btn btn-sm btn-outline-danger" href="{% url 'vehicules:supprimer' vehicule.pk %}" title="Supprimer" aria-label="Supprimer {{ vehicule }}"><i class="bi bi-trash"></i></a></div></td>
+</tr>{% empty %}<tr><td colspan="7"><div class="empty-state"><i class="bi bi-truck"></i>Aucun véhicule enregistré.</div></td></tr>{% endfor %}
+</tbody></table></div></div>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{% if object %}Modifier le véhicule{% else %}Ajouter un véhicule{% endif %}{% endblock %}
+{% block content %}
+<header class="page-heading"><div><p class="eyebrow mb-1">Gestion de flotte</p><h1 class="page-title">{% if object %}Modifier le véhicule{% else %}Ajouter un véhicule{% endif %}</h1><p class="page-subtitle">Renseignez l’identification, l’affectation et les échéances réglementaires.</p></div></header>
+<form method="post" enctype="multipart/form-data" novalidate>{% csrf_token %}{% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+<div class="row g-4 align-items-start">
+    <div class="col-xl-8"><section class="card"><div class="card-header d-flex gap-2 align-items-center"><i class="bi bi-truck text-primary"></i>Identification du véhicule</div><div class="card-body"><div class="row g-3">
+        <div class="col-md-6"><label class="form-label" for="{{ form.site.id_for_label }}">Site <span class="text-danger">*</span></label>{{ form.site }}{% if form.site.errors %}<div class="invalid-feedback d-block">{{ form.site.errors|striptags }}</div>{% endif %}</div>
+        <div class="col-md-6"><label class="form-label" for="{{ form.categorie.id_for_label }}">Catégorie <span class="text-danger">*</span></label>{{ form.categorie }}{% if form.categorie.errors %}<div class="invalid-feedback d-block">{{ form.categorie.errors|striptags }}</div>{% endif %}</div>
+        <div class="col-md-4"><label class="form-label" for="{{ form.immatriculation.id_for_label }}">Immatriculation</label>{{ form.immatriculation }}{% if form.immatriculation.errors %}<div class="invalid-feedback d-block">{{ form.immatriculation.errors|striptags }}</div>{% endif %}<div class="form-text">Facultative pour les engins de manutention.</div></div>
+        <div class="col-md-4"><label class="form-label" for="{{ form.marque.id_for_label }}">Marque <span class="text-danger">*</span></label>{{ form.marque }}{% if form.marque.errors %}<div class="invalid-feedback d-block">{{ form.marque.errors|striptags }}</div>{% endif %}</div>
+        <div class="col-md-4"><label class="form-label" for="{{ form.modele.id_for_label }}">Modèle <span class="text-danger">*</span></label>{{ form.modele }}{% if form.modele.errors %}<div class="invalid-feedback d-block">{{ form.modele.errors|striptags }}</div>{% endif %}</div>
+        <div class="col-md-6"><label class="form-label" for="{{ form.numero_serie.id_for_label }}">Numéro VIN</label>{{ form.numero_serie }}{{ form.numero_serie.errors }}</div>
+        <div class="col-md-3"><label class="form-label" for="{{ form.carburant.id_for_label }}">Énergie</label>{{ form.carburant }}</div>
+        <div class="col-md-3"><label class="form-label" for="{{ form.statut.id_for_label }}">Statut</label>{{ form.statut }}</div>
+        <div class="col-md-6"><label class="form-label" for="{{ form.date_mise_circulation.id_for_label }}">Mise en circulation</label>{{ form.date_mise_circulation }}</div>
+        <div class="col-md-6"><label class="form-label" for="{{ form.kilometrage.id_for_label }}">Kilométrage actuel</label><div class="input-group">{{ form.kilometrage }}<span class="input-group-text">km</span></div></div>
+        <div class="col-12"><label class="form-label" for="{{ form.notes.id_for_label }}">Notes</label>{{ form.notes }}</div>
+    </div></div></section></div>
+    <div class="col-xl-4"><section class="card mb-4"><div class="card-header d-flex gap-2 align-items-center"><i class="bi bi-calendar2-check text-primary"></i>Échéances</div><div class="card-body">
+        <div class="mb-3"><label class="form-label" for="{{ form.date_assurance.id_for_label }}">Assurance</label>{{ form.date_assurance }}</div>
+        <div class="mb-3"><label class="form-label" for="{{ form.date_controle_technique.id_for_label }}">Contrôle technique</label>{{ form.date_controle_technique }}</div>
+        <div class="mb-3"><label class="form-label" for="{{ form.date_mines.id_for_label }}">Passage aux mines</label>{{ form.date_mines }}{% if form.date_mines.errors %}<div class="invalid-feedback d-block">{{ form.date_mines.errors|striptags }}</div>{% endif %}<div class="form-text">Obligatoire pour les remorques poids lourd.</div></div>
+        <div class="mb-3"><label class="form-label" for="{{ form.date_vgp.id_for_label }}">Échéance VGP</label>{{ form.date_vgp }}{% if form.date_vgp.errors %}<div class="invalid-feedback d-block">{{ form.date_vgp.errors|striptags }}</div>{% endif %}<div class="form-text">Contrôle réalisé par DEKRA pour les engins de manutention.</div></div>
+        <div class="mb-3"><label class="form-label" for="{{ form.organisme_vgp.id_for_label }}">Organisme VGP</label>{{ form.organisme_vgp }}</div>
+        <div class="mb-3"><label class="form-label" for="{{ form.prochain_entretien_date.id_for_label }}">Prochain entretien</label>{{ form.prochain_entretien_date }}</div>
+        <div><label class="form-label" for="{{ form.prochain_entretien_km.id_for_label }}">Entretien à</label><div class="input-group">{{ form.prochain_entretien_km }}<span class="input-group-text">km</span></div></div>
+    </div></section><section class="card"><div class="card-header d-flex gap-2 align-items-center"><i class="bi bi-image text-primary"></i>Photo</div><div class="card-body">{{ form.photo }}{% if object.photo %}<img class="img-fluid rounded mt-3" src="{% url 'vehicules:photo' object.pk %}" alt="{{ object }}">{% endif %}</div></section></div>
+</div>
+<div class="d-flex justify-content-end gap-2 mt-4"><a class="btn btn-outline-secondary" href="{% if object %}{% url 'vehicules:detail' object.pk %}{% else %}{% url 'vehicules:liste' %}{% endif %}">Annuler</a><button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>Enregistrer</button></div>
+</form>
+{% endblock %}

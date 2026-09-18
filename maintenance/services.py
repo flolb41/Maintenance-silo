@@ -7,8 +7,8 @@ from asgiref.sync import async_to_sync
 from .models import Notification
 
 
-def _diffuser_ws(event_type: str, data: dict):
-    """Diffuse un événement WebSocket sur le groupe global (best-effort)."""
+def _diffuser_ws(utilisateur_id: int, event_type: str, data: dict):
+    """Diffuse un événement WebSocket au destinataire (best-effort)."""
     try:
         from channels.layers import get_channel_layer
 
@@ -16,7 +16,7 @@ def _diffuser_ws(event_type: str, data: dict):
         if channel_layer is None:
             return
         async_to_sync(channel_layer.group_send)(
-            "maintenance_global",
+            f"maintenance_user_{utilisateur_id}",
             {
                 "type": "maintenance.event",
                 "event_type": event_type,
@@ -38,6 +38,7 @@ def notifier(utilisateur, type_notif: str, titre: str, message: str, lien: str =
         lien=lien,
     )
     _diffuser_ws(
+        utilisateur.pk,
         type_notif,
         {
             "id": notif.id,

@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}{% if object %}Modifier le site{% else %}Nouveau site{% endif %}{% endblock %}
+{% block content %}
+<header class="page-heading">
+	<div>
+		<p class="eyebrow mb-1">Référentiel</p>
+		<h1 class="page-title">{% if object %}Modifier le site{% else %}Nouveau site{% endif %}</h1>
+		<p class="page-subtitle">Informations générales et photos de l’implantation.</p>
+	</div>
+</header>
+
+<form method="post" enctype="multipart/form-data" class="card card-body app-form" novalidate>
+	{% csrf_token %}
+	{% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+	<div class="row g-3">
+		<div class="col-md-6">
+			<label class="form-label" for="{{ form.nom.id_for_label }}">{{ form.nom.label }}</label>
+			{{ form.nom }}{{ form.nom.errors }}
+		</div>
+		<div class="col-md-6 d-flex align-items-end pb-2">
+			<div class="form-check">{{ form.actif }} <label class="form-check-label" for="{{ form.actif.id_for_label }}">{{ form.actif.label }}</label></div>
+		</div>
+		<div class="col-12">
+			<label class="form-label" for="{{ form.adresse.id_for_label }}">{{ form.adresse.label }}</label>
+			{{ form.adresse }}{{ form.adresse.errors }}
+		</div>
+	</div>
+
+	<hr class="my-4">
+	<div class="d-flex justify-content-between align-items-center mb-3">
+		<div><h2 class="h5 mb-1">Silos et cellules</h2><p class="text-muted small mb-0">Découpez le site en silos distincts, puis configurez les cellules de chacun.</p></div>
+		<button class="btn btn-sm btn-outline-primary" id="add-silo" type="button"><i class="bi bi-plus-lg me-1"></i>Ajouter un silo</button>
+	</div>
+	{{ silo_formset.management_form }}
+	{% if silo_formset.non_form_errors %}<div class="alert alert-danger">{{ silo_formset.non_form_errors }}</div>{% endif %}
+	<div id="silos-formset" class="vstack gap-4">
+		{% for silo_form in silo_formset %}
+		<section class="border rounded p-3 silo-form-row {% if not silo_form.instance.pk and not silo_form.errors and not silo_form.is_bound %}d-none{% endif %}" data-silo-form data-existing="{% if silo_form.instance.pk %}true{% else %}false{% endif %}">
+			{% for hidden in silo_form.hidden_fields %}{{ hidden }}{% endfor %}
+			<div class="d-flex justify-content-between align-items-center mb-3"><div><span class="badge text-bg-primary mb-1">Silo <span data-silo-number>{{ forloop.counter }}</span></span><h3 class="h6 mb-0" data-silo-title>{{ silo_form.instance.nom|default:"Nouveau silo" }}</h3></div><button class="btn btn-sm btn-outline-danger" type="button" data-remove-silo title="Retirer le silo"><i class="bi bi-trash"></i></button></div>
+			{% if silo_form.non_field_errors %}<div class="alert alert-danger py-2">{{ silo_form.non_field_errors }}</div>{% endif %}
+			<div class="row g-3 mb-4">
+				<div class="col-md-5"><label class="form-label" for="{{ silo_form.nom.id_for_label }}">Nom du silo</label>{{ silo_form.nom }}{{ silo_form.nom.errors }}</div>
+				<div class="col-md-5"><label class="form-label" for="{{ silo_form.description.id_for_label }}">Description</label>{{ silo_form.description }}{{ silo_form.description.errors }}</div>
+				<div class="col-md-2 d-flex align-items-end pb-2"><div class="form-check">{{ silo_form.actif }} <label class="form-check-label" for="{{ silo_form.actif.id_for_label }}">Actif</label></div></div>
+			</div>
+			<div class="d-none">{{ silo_form.DELETE }}</div>
+
+			{% with cellule_formset=silo_form.cellule_formset %}
+			<div class="d-flex justify-content-between align-items-center mb-2"><h4 class="h6 mb-0">Cellules de ce silo</h4><button class="btn btn-sm btn-outline-secondary" type="button" data-add-cellule><i class="bi bi-plus-lg me-1"></i>Ajouter une cellule</button></div>
+			{{ cellule_formset.management_form }}
+			{% if cellule_formset.non_form_errors %}<div class="alert alert-danger py-2">{{ cellule_formset.non_form_errors }}</div>{% endif %}
+			<div class="vstack gap-3" data-cellules-formset>
+				{% for cellule_form in cellule_formset %}
+				<div class="bg-light border rounded p-3 cellule-form-row {% if not cellule_form.instance.pk and not cellule_form.errors and not cellule_form.is_bound %}d-none{% endif %}" data-cellule-form>
+					{% for hidden in cellule_form.hidden_fields %}{{ hidden }}{% endfor %}
+					<div class="d-flex justify-content-between align-items-center mb-3"><strong>Cellule <span data-cellule-number>{{ forloop.counter }}</span></strong><button class="btn btn-sm btn-outline-danger" type="button" data-remove-cellule title="Retirer la cellule"><i class="bi bi-trash"></i></button></div>
+					{% if cellule_form.non_field_errors %}<div class="alert alert-danger py-2">{{ cellule_form.non_field_errors }}</div>{% endif %}
+					<div class="row g-3">
+						<div class="col-md-4"><label class="form-label" for="{{ cellule_form.nom.id_for_label }}">{{ cellule_form.nom.label }}</label>{{ cellule_form.nom }}{{ cellule_form.nom.errors }}</div>
+						<div class="col-md-4"><label class="form-label" for="{{ cellule_form.marque.id_for_label }}">{{ cellule_form.marque.label }}</label>{{ cellule_form.marque }}{{ cellule_form.marque.errors }}</div>
+						<div class="col-md-4"><label class="form-label" for="{{ cellule_form.etat.id_for_label }}">{{ cellule_form.etat.label }}</label>{{ cellule_form.etat }}{{ cellule_form.etat.errors }}</div>
+						<div class="col-md-4"><label class="form-label" for="{{ cellule_form.type_grain.id_for_label }}">{{ cellule_form.type_grain.label }}</label>{{ cellule_form.type_grain }}{{ cellule_form.type_grain.errors }}</div>
+						<div class="col-md-4"><label class="form-label" for="{{ cellule_form.forme.id_for_label }}">{{ cellule_form.forme.label }}</label>{{ cellule_form.forme }}{{ cellule_form.forme.errors }}</div>
+						<div class="col-md-4"><label class="form-label" for="{{ cellule_form.hauteur_m.id_for_label }}">{{ cellule_form.hauteur_m.label }}</label>{{ cellule_form.hauteur_m }}{{ cellule_form.hauteur_m.errors }}</div>
+						<div class="col-md-4" data-dimension="diametre"><label class="form-label" for="{{ cellule_form.diametre_m.id_for_label }}">{{ cellule_form.diametre_m.label }}</label>{{ cellule_form.diametre_m }}{{ cellule_form.diametre_m.errors }}</div>
+						<div class="col-md-4" data-dimension="longueur"><label class="form-label" for="{{ cellule_form.longueur_m.id_for_label }}">{{ cellule_form.longueur_m.label }}</label>{{ cellule_form.longueur_m }}{{ cellule_form.longueur_m.errors }}</div>
+						<div class="col-md-4" data-dimension="largeur"><label class="form-label" for="{{ cellule_form.largeur_m.id_for_label }}">{{ cellule_form.largeur_m.label }}</label>{{ cellule_form.largeur_m }}{{ cellule_form.largeur_m.errors }}</div>
+						<div class="col-md-4"><label class="form-label" for="{{ cellule_form.nombre_toles_hauteur.id_for_label }}">{{ cellule_form.nombre_toles_hauteur.label }}</label>{{ cellule_form.nombre_toles_hauteur }}{{ cellule_form.nombre_toles_hauteur.errors }}</div>
+						<div class="col-md-4 d-flex align-items-end pb-2"><div class="form-check">{{ cellule_form.actif }} <label class="form-check-label" for="{{ cellule_form.actif.id_for_label }}">{{ cellule_form.actif.label }}</label></div></div>
+					</div>
+					<div class="d-none">{{ cellule_form.DELETE }}</div>
+				</div>
+				{% endfor %}
+			</div>
+			<template data-empty-cellule-form>
+				<div class="bg-light border rounded p-3 cellule-form-row" data-cellule-form>
+					{% for hidden in cellule_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+					<div class="d-flex justify-content-between align-items-center mb-3"><strong>Nouvelle cellule</strong><button class="btn btn-sm btn-outline-danger" type="button" data-remove-cellule title="Retirer la cellule"><i class="bi bi-trash"></i></button></div>
+					<div class="row g-3">
+						<div class="col-md-4"><label class="form-label" for="{{ cellule_formset.empty_form.nom.id_for_label }}">{{ cellule_formset.empty_form.nom.label }}</label>{{ cellule_formset.empty_form.nom }}</div>
+						<div class="col-md-4"><label class="form-label" for="{{ cellule_formset.empty_form.marque.id_for_label }}">{{ cellule_formset.empty_form.marque.label }}</label>{{ cellule_formset.empty_form.marque }}</div>
+						<div class="col-md-4"><label class="form-label" for="{{ cellule_formset.empty_form.etat.id_for_label }}">{{ cellule_formset.empty_form.etat.label }}</label>{{ cellule_formset.empty_form.etat }}</div>
+						<div class="col-md-4"><label class="form-label" for="{{ cellule_formset.empty_form.type_grain.id_for_label }}">{{ cellule_formset.empty_form.type_grain.label }}</label>{{ cellule_formset.empty_form.type_grain }}</div>
+						<div class="col-md-4"><label class="form-label" for="{{ cellule_formset.empty_form.forme.id_for_label }}">{{ cellule_formset.empty_form.forme.label }}</label>{{ cellule_formset.empty_form.forme }}</div>
+						<div class="col-md-4"><label class="form-label" for="{{ cellule_formset.empty_form.hauteur_m.id_for_label }}">{{ cellule_formset.empty_form.hauteur_m.label }}</label>{{ cellule_formset.empty_form.hauteur_m }}</div>
+						<div class="col-md-4" data-dimension="diametre"><label class="form-label" for="{{ cellule_formset.empty_form.diametre_m.id_for_label }}">{{ cellule_formset.empty_form.diametre_m.label }}</label>{{ cellule_formset.empty_form.diametre_m }}</div>
+						<div class="col-md-4" data-dimension="longueur"><label class="form-label" for="{{ cellule_formset.empty_form.longueur_m.id_for_label }}">{{ cellule_formset.empty_form.longueur_m.label }}</label>{{ cellule_formset.empty_form.longueur_m }}</div>
+						<div class="col-md-4" data-dimension="largeur"><label class="form-label" for="{{ cellule_formset.empty_form.largeur_m.id_for_label }}">{{ cellule_formset.empty_form.largeur_m.label }}</label>{{ cellule_formset.empty_form.largeur_m }}</div>
+						<div class="col-md-4"><label class="form-label" for="{{ cellule_formset.empty_form.nombre_toles_hauteur.id_for_label }}">{{ cellule_formset.empty_form.nombre_toles_hauteur.label }}</label>{{ cellule_formset.empty_form.nombre_toles_hauteur }}</div>
+						<div class="col-md-4 d-flex align-items-end pb-2"><div class="form-check">{{ cellule_formset.empty_form.actif }} <label class="form-check-label" for="{{ cellule_formset.empty_form.actif.id_for_label }}">{{ cellule_formset.empty_form.actif.label }}</label></div></div>
+					</div>
+					<div class="d-none">{{ cellule_formset.empty_form.DELETE }}</div>
+				</div>
+			</template>
+			{% endwith %}
+		</section>
+		{% endfor %}
+	</div>
+
+	<hr class="my-4">
+	<div class="row g-3">
+		<div class="col-12">
+			<label class="form-label" for="{{ form.photos.id_for_label }}">{{ form.photos.label }}</label>
+			{{ form.photos }}{{ form.photos.errors }}
+			<div class="form-text">JPG, PNG, GIF ou WebP. Vous pouvez sélectionner plusieurs photos.</div>
+		</div>
+	</div>
+
+	{% if object and object.photos.exists %}
+	<hr class="my-4">
+	<h2 class="h6 mb-3">Photos enregistrées</h2>
+	<div class="row g-3">
+		{% for photo in object.photos.all %}
+		<div class="col-6 col-md-3">
+			<div class="border rounded overflow-hidden position-relative">
+				<img src="{% url 'site_photo_afficher' photo.pk %}" alt="{{ photo.nom_original }}" class="site-photo-preview w-100">
+				<a href="{% url 'site_photo_delete' photo.pk %}" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2" title="Supprimer la photo" aria-label="Supprimer la photo"><i class="bi bi-trash"></i></a>
+			</div>
+		</div>
+		{% endfor %}
+	</div>
+	{% endif %}
+
+	<div class="d-flex justify-content-end gap-2 mt-4">
+		<a class="btn btn-outline-secondary" href="{% url 'site_list' %}">Annuler</a>
+		<button class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Enregistrer</button>
+	</div>
+</form>
+{% endblock %}
+{% block extra_js %}
+<script>
+(() => {
+	function updateDimensions(row) {
+		const forme = row.querySelector(".cellule-forme")?.value;
+		row.querySelector('[data-dimension="diametre"]').classList.toggle("d-none", forme !== "ronde");
+		row.querySelector('[data-dimension="longueur"]').classList.toggle("d-none", forme === "ronde");
+		row.querySelector('[data-dimension="largeur"]').classList.toggle("d-none", forme !== "rectangulaire");
+	}
+
+	function initializeCellule(row, number) {
+		const numberTarget = row.querySelector("[data-cellule-number]");
+		if (numberTarget) numberTarget.textContent = number;
+		const idInput = row.querySelector('input[name$="-id"]');
+		const nomInput = row.querySelector('input[name$="-nom"]');
+		const activeInput = row.querySelector('input[name$="-actif"]');
+		if (!idInput?.value && !nomInput?.value && !activeInput?.checked) row.classList.add("d-none");
+		row.querySelector(".cellule-forme")?.addEventListener("change", () => updateDimensions(row));
+		row.querySelector("[data-remove-cellule]").addEventListener("click", () => {
+			const deleteInput = row.querySelector('input[name$="-DELETE"]');
+			if (deleteInput) deleteInput.checked = true;
+			row.classList.add("d-none");
+		});
+		updateDimensions(row);
+	}
+
+	function initializeSilo(row, number) {
+		row.querySelector("[data-silo-number]").textContent = number;
+		const nomInput = row.querySelector('input[name$="-nom"]');
+		nomInput?.addEventListener("input", () => {
+			row.querySelector("[data-silo-title]").textContent = nomInput.value || "Nouveau silo";
+		});
+		row.querySelector("[data-remove-silo]").addEventListener("click", () => {
+			const deleteInput = row.querySelector(':scope > input[name$="-DELETE"], :scope > .d-none input[name$="-DELETE"]');
+			if (deleteInput) deleteInput.checked = true;
+			row.classList.add("d-none");
+		});
+
+		const cellulesContainer = row.querySelector("[data-cellules-formset]");
+		const totalForms = row.querySelector('input[name$="-cellules-TOTAL_FORMS"]');
+		const template = row.querySelector("[data-empty-cellule-form]");
+		cellulesContainer.querySelectorAll("[data-cellule-form]").forEach((cellule, index) => initializeCellule(cellule, index + 1));
+		row.querySelector("[data-add-cellule]").addEventListener("click", () => {
+			const preparedCellule = [...cellulesContainer.querySelectorAll("[data-cellule-form]")].find(cellule => cellule.classList.contains("d-none"));
+			if (preparedCellule) {
+				preparedCellule.classList.remove("d-none");
+				const activeInput = preparedCellule.querySelector('input[name$="-actif"]');
+				if (activeInput) activeInput.checked = true;
+				preparedCellule.querySelector('input[name$="-nom"]')?.focus();
+				return;
+			}
+			const index = Number(totalForms.value);
+			const wrapper = document.createElement("div");
+			wrapper.innerHTML = template.innerHTML.replaceAll("__prefix__", index).trim();
+			const cellule = wrapper.firstElementChild;
+			cellulesContainer.appendChild(cellule);
+			totalForms.value = index + 1;
+			const activeInput = cellule.querySelector('input[name$="-actif"]');
+			if (activeInput) activeInput.checked = true;
+			initializeCellule(cellule, index + 1);
+		});
+	}
+
+	const siloRows = [...document.querySelectorAll("[data-silo-form]")];
+	siloRows.forEach((row, index) => initializeSilo(row, index + 1));
+	document.getElementById("add-silo").addEventListener("click", () => {
+		const row = siloRows.find(candidate => candidate.classList.contains("d-none") && candidate.dataset.existing === "false");
+		if (!row) return;
+		const deleteInput = row.querySelector('input[name$="-DELETE"]');
+		if (deleteInput) deleteInput.checked = false;
+		const activeInput = row.querySelector(':scope > .row input[name$="-actif"]');
+		if (activeInput) activeInput.checked = true;
+		row.classList.remove("d-none");
+		row.querySelector('input[name$="-nom"]')?.focus();
+	});
+})();
+</script>
+{% endblock %}

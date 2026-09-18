@@ -12,6 +12,7 @@ services:
     volumes:
       - .:/app
       - media_data:/app/media
+      - private_invoice_data:/app/private_invoices
     depends_on:
       db:
         condition: service_healthy
@@ -41,3 +42,4 @@ volumes:
   postgres_data:
   redis_data:
   media_data:
+  private_invoice_data:

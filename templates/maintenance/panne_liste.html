@@ -1,15 +1,25 @@
 {% extends "base.html" %}
 {% block title %}Pannes{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2><i class="bi bi-exclamation-triangle"></i> Pannes</h2>
-    <a href="{% url 'panne_creer' %}" class="btn btn-danger"><i class="bi bi-plus-lg"></i> Déclarer une panne</a>
-</div>
+<header class="page-heading">
+    <div><p class="eyebrow mb-1">Suivi correctif</p><h1 class="page-title">Pannes</h1><p class="page-subtitle">Consultez, filtrez et traitez les incidents déclarés.</p></div>
+    {% if profile.is_admin or profile.is_silo %}
+    <div class="action-group"><a href="{% url 'panne_export_csv' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-secondary"><i class="bi bi-download me-1"></i>Exporter CSV</a><a href="{% url 'panne_creer' %}" class="btn btn-danger"><i class="bi bi-plus-lg"></i> Déclarer une panne</a></div>
+    {% endif %}
+</header>
 
-<div class="card">
+<form method="get" class="toolbar mb-3">
+    <div class="flex-grow-1"><label class="form-label" for="panne-q">Recherche</label><input id="panne-q" class="form-control" type="search" name="q" value="{{ current_q }}" placeholder="Titre ou description"></div>
+    <div><label class="form-label" for="panne-statut">Statut</label><select id="panne-statut" class="form-select" name="statut"><option value="">Tous</option>{% for value, label in statuts %}<option value="{{ value }}" {% if current_statut == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div><label class="form-label" for="panne-priorite">Priorité</label><select id="panne-priorite" class="form-select" name="priorite"><option value="">Toutes</option>{% for value, label in priorites %}<option value="{{ value }}" {% if current_priorite == value|stringformat:'s' %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div><label class="form-label" for="panne-site">Site</label><select id="panne-site" class="form-select" name="site"><option value="">Tous</option>{% for site in sites %}<option value="{{ site.pk }}" {% if current_site == site.pk|stringformat:'s' %}selected{% endif %}>{{ site.nom }}</option>{% endfor %}</select></div>
+    <div class="action-group"><button class="btn btn-primary" type="submit"><i class="bi bi-funnel me-1"></i>Filtrer</button><a class="btn btn-outline-secondary" href="{% url 'panne_liste' %}" title="Réinitialiser"><i class="bi bi-arrow-counterclockwise"></i></a></div>
+</form>
+
+<div class="table-shell">
     <div class="table-responsive">
         <table class="table table-hover mb-0">
-            <thead class="table-dark">
+            <thead>
                 <tr>
                     <th>Titre</th>
                     <th>Site</th>
@@ -24,28 +34,29 @@
             <tbody>
                 {% for panne in pannes %}
                 <tr>
-                    <td>{{ panne.titre|truncatechars:50 }}</td>
+                    <td><a class="fw-semibold text-decoration-none" href="{% url 'panne_detail' panne.pk %}">{{ panne.titre|truncatechars:50 }}</a></td>
                     <td>{{ panne.site.nom }}</td>
                     <td>
-                        <span class="badge bg-{% if panne.priorite == 'critique' %}danger{% elif panne.priorite == 'haute' %}warning text-dark{% elif panne.priorite == 'normale' %}primary{% else %}secondary{% endif %}">
+                        <span class="badge status-{% if panne.priorite == 'critique' %}danger{% elif panne.priorite == 'haute' %}warning{% else %}neutral{% endif %}">
                             {{ panne.get_priorite_display }}
                         </span>
                     </td>
                     <td>
-                        <span class="badge bg-{% if panne.statut == 'nouvelle' %}info text-dark{% elif panne.statut == 'cloturee' %}success{% elif panne.statut == 'resolue' %}success{% else %}secondary{% endif %}">
+                        <span class="badge status-{% if panne.statut == 'nouvelle' %}info{% elif panne.statut == 'cloturee' or panne.statut == 'resolue' %}success{% else %}neutral{% endif %}">
                             {{ panne.get_statut_display }}
                         </span>
                     </td>
                     <td>{{ panne.declarant.get_full_name|default:panne.declarant.username }}</td>
                     <td>{{ panne.agent_assigne.get_full_name|default:"—" }}</td>
                     <td>{{ panne.creee_le|date:"d/m/Y H:i" }}</td>
-                    <td><a href="{% url 'panne_detail' panne.pk %}" class="btn btn-sm btn-outline-primary">Détail</a></td>
+                    <td class="text-end"><a href="{% url 'panne_detail' panne.pk %}" class="btn btn-sm btn-outline-primary" title="Ouvrir"><i class="bi bi-arrow-right"></i></a></td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="8" class="text-center text-muted py-4">Aucune panne enregistrée.</td></tr>
+                <tr><td colspan="8"><div class="empty-state"><i class="bi bi-search"></i>Aucune panne ne correspond aux critères.</div></td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
+{% if is_paginated %}<nav class="d-flex justify-content-between align-items-center mt-3" aria-label="Pagination"><span class="text-secondary small">Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span><div class="btn-group">{% if page_obj.has_previous %}<a class="btn btn-outline-secondary" href="?{% if filter_query %}{{ filter_query }}&{% endif %}page={{ page_obj.previous_page_number }}"><i class="bi bi-chevron-left"></i></a>{% endif %}{% if page_obj.has_next %}<a class="btn btn-outline-secondary" href="?{% if filter_query %}{{ filter_query }}&{% endif %}page={{ page_obj.next_page_number }}"><i class="bi bi-chevron-right"></i></a>{% endif %}</div></nav>{% endif %}
 {% endblock %}

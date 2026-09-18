@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Mon profil{% endblock %}
+{% block content %}
+<div class="profile-page">
+	<header class="page-heading">
+		<div>
+			<p class="eyebrow mb-1">Mon compte</p>
+			<h1 class="page-title">Profil et sécurité</h1>
+			<p class="page-subtitle">Gérez vos informations personnelles et protégez l’accès à votre espace.</p>
+		</div>
+	</header>
+
+	<section class="profile-identity" aria-label="Résumé du compte">
+		<div class="profile-avatar" aria-hidden="true"><i class="bi bi-person"></i></div>
+		<div class="profile-identity-main">
+			<h2>{{ user.get_full_name|default:user.username }}</h2>
+			<div class="profile-meta">
+				<span><i class="bi bi-person-badge"></i>{{ user.username }}</span>
+				<span><i class="bi bi-shield-check"></i>{{ profile.get_role_display }}</span>
+				{% if user.email %}<span><i class="bi bi-envelope-check"></i>{{ user.email }}</span>{% endif %}
+			</div>
+		</div>
+		<span class="badge status-success profile-status"><i class="bi bi-check-circle me-1"></i>Compte actif</span>
+	</section>
+
+	<div class="row g-4 align-items-start mt-0">
+		<div class="col-lg-8">
+			<form method="post" class="card profile-form" novalidate>
+				{% csrf_token %}
+				<div class="card-header d-flex align-items-center gap-2">
+					<i class="bi bi-person-lines-fill text-primary"></i>
+					<span>Informations personnelles</span>
+				</div>
+				<div class="card-body">
+					{% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+					<div class="row g-3">
+						<div class="col-md-6">
+							<label class="form-label" for="{{ form.first_name.id_for_label }}">Prénom</label>
+							{{ form.first_name }}
+							{% if form.first_name.errors %}<div class="invalid-feedback d-block">{{ form.first_name.errors|striptags }}</div>{% endif %}
+						</div>
+						<div class="col-md-6">
+							<label class="form-label" for="{{ form.last_name.id_for_label }}">Nom</label>
+							{{ form.last_name }}
+							{% if form.last_name.errors %}<div class="invalid-feedback d-block">{{ form.last_name.errors|striptags }}</div>{% endif %}
+						</div>
+						<div class="col-12">
+							<label class="form-label" for="{{ form.email.id_for_label }}">Adresse e-mail de récupération</label>
+							<div class="input-group"><span class="input-group-text"><i class="bi bi-envelope"></i></span>{{ form.email }}</div>
+							<div class="form-text">Cette adresse permet de recevoir un lien sécurisé en cas d’oubli du mot de passe.</div>
+							{% if form.email.errors %}<div class="invalid-feedback d-block">{{ form.email.errors|striptags }}</div>{% endif %}
+						</div>
+					</div>
+				</div>
+				<div class="card-footer d-flex justify-content-end">
+					<button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>Enregistrer les modifications</button>
+				</div>
+			</form>
+		</div>
+
+		<div class="col-lg-4">
+			<div class="profile-side-stack">
+				<section class="card">
+					<div class="card-header d-flex align-items-center gap-2"><i class="bi bi-shield-lock text-primary"></i><span>Accès et sécurité</span></div>
+					<div class="card-body">
+						<div class="profile-security-row">
+							<span class="profile-security-icon"><i class="bi bi-key"></i></span>
+							<div><strong>Mot de passe</strong><p>Modifiez-le régulièrement et ne le partagez jamais.</p></div>
+						</div>
+						<a class="btn btn-outline-primary w-100" href="{% url 'password_change' %}"><i class="bi bi-key me-1"></i>Modifier mon mot de passe</a>
+					</div>
+				</section>
+
+				<section class="card">
+					<div class="card-header d-flex align-items-center gap-2"><i class="bi bi-info-circle text-primary"></i><span>Informations d’accès</span></div>
+					<div class="card-body profile-access-list">
+						<div><span>Identifiant</span><strong>{{ user.username }}</strong></div>
+						<div><span>Rôle</span><strong>{{ profile.get_role_display }}</strong></div>
+						<div><span>Récupération</span>{% if user.email %}<strong class="text-success"><i class="bi bi-check-circle me-1"></i>Configurée</strong>{% else %}<strong class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>À configurer</strong>{% endif %}</div>
+					</div>
+				</section>
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %}

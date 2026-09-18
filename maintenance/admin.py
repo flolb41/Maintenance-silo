@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from .models import (
+    CelluleGrain,
     Equipement,
     Facture,
     MaintenancePreventive,
@@ -9,7 +10,11 @@ from .models import (
     PanneMedia,
     PreventiveMedia,
     Profile,
+    ReleveStockageAPlat,
+    Silo,
     Site,
+    StockageAPlat,
+    TypeGrain,
 )
 
 
@@ -26,6 +31,43 @@ class SiteAdmin(admin.ModelAdmin):
     list_filter = ("actif",)
     search_fields = ("nom", "adresse")
     filter_horizontal = ("utilisateurs",)
+
+
+@admin.register(Silo)
+class SiloAdmin(admin.ModelAdmin):
+    list_display = ("nom", "site", "actif")
+    list_filter = ("site", "actif")
+    search_fields = ("nom", "site__nom", "description")
+
+
+@admin.register(CelluleGrain)
+class CelluleGrainAdmin(admin.ModelAdmin):
+    list_display = ("nom", "marque", "silo", "site", "type_grain",
+                    "forme", "capacite_tonnes", "actif")
+    list_filter = ("site", "silo", "marque", "type_grain", "forme", "actif")
+    search_fields = ("nom", "marque", "silo__nom", "site__nom")
+    readonly_fields = ("site", "capacite_tonnes")
+
+
+@admin.register(StockageAPlat)
+class StockageAPlatAdmin(admin.ModelAdmin):
+    list_display = ("nom", "site", "type_grain", "actif")
+    list_filter = ("site", "type_grain", "actif")
+    search_fields = ("nom", "site__nom")
+
+
+@admin.register(ReleveStockageAPlat)
+class ReleveStockageAPlatAdmin(admin.ModelAdmin):
+    list_display = ("stockage", "tonnage", "releve_le", "releve_par")
+    list_filter = ("stockage__site", "stockage__type_grain")
+    search_fields = ("stockage__nom", "stockage__site__nom")
+
+
+@admin.register(TypeGrain)
+class TypeGrainAdmin(admin.ModelAdmin):
+    list_display = ("nom", "poids_specifique_moyen", "actif")
+    list_filter = ("actif",)
+    search_fields = ("nom",)
 
 
 @admin.register(Equipement)
@@ -49,7 +91,8 @@ class FactureInline(admin.TabularInline):
 
 @admin.register(Panne)
 class PanneAdmin(admin.ModelAdmin):
-    list_display = ("titre", "site", "priorite", "statut", "declarant", "agent_assigne", "creee_le")
+    list_display = ("titre", "site", "priorite", "statut",
+                    "declarant", "agent_assigne", "creee_le")
     list_filter = ("site", "priorite", "statut")
     search_fields = ("titre", "description")
     readonly_fields = ("creee_le", "modifiee_le")
@@ -64,7 +107,8 @@ class PreventiveMediaInline(admin.TabularInline):
 
 @admin.register(MaintenancePreventive)
 class MaintenancePreventiveAdmin(admin.ModelAdmin):
-    list_display = ("titre", "site", "statut", "createur", "destinataire", "echeance")
+    list_display = ("titre", "site", "statut", "createur",
+                    "destinataire", "echeance")
     list_filter = ("site", "statut")
     search_fields = ("titre", "instructions")
     readonly_fields = ("creee_le", "modifiee_le")

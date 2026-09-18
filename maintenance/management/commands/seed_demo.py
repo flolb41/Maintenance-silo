@@ -22,10 +22,14 @@ from maintenance.models import (
 User = get_user_model()
 
 DEMO_USERS = [
-    {"username": "admin_demo", "password": "demo1234!", "role": Profile.Role.ADMIN, "first_name": "Alice", "last_name": "Admin"},
-    {"username": "maintenance_demo", "password": "demo1234!", "role": Profile.Role.MAINTENANCE, "first_name": "Marc", "last_name": "Maintenance"},
-    {"username": "silo_demo", "password": "demo1234!", "role": Profile.Role.SILO, "first_name": "Sam", "last_name": "Silo"},
-    {"username": "silo2_demo", "password": "demo1234!", "role": Profile.Role.SILO, "first_name": "Sophie", "last_name": "Silo2"},
+    {"username": "admin_demo", "password": "demo1234!",
+        "role": Profile.Role.ADMIN, "first_name": "Alice", "last_name": "Admin"},
+    {"username": "maintenance_demo", "password": "demo1234!",
+        "role": Profile.Role.MAINTENANCE, "first_name": "Marc", "last_name": "Maintenance"},
+    {"username": "silo_demo", "password": "demo1234!",
+        "role": Profile.Role.SILO, "first_name": "Sam", "last_name": "Silo"},
+    {"username": "silo2_demo", "password": "demo1234!",
+        "role": Profile.Role.SILO, "first_name": "Sophie", "last_name": "Silo2"},
 ]
 
 
@@ -41,7 +45,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         if options["reset"]:
-            self.stdout.write(self.style.WARNING("Suppression des données existantes…"))
+            self.stdout.write(self.style.WARNING(
+                "Suppression des données existantes…"))
             MaintenancePreventive.objects.all().delete()
             Panne.objects.all().delete()
             Equipement.objects.all().delete()
@@ -49,13 +54,18 @@ class Command(BaseCommand):
             User.objects.filter(username__endswith="_demo").delete()
 
         # Création des sites
-        site1, _ = Site.objects.get_or_create(nom="Silo Nord", defaults={"adresse": "Zone industrielle Nord", "actif": True})
-        site2, _ = Site.objects.get_or_create(nom="Silo Sud", defaults={"adresse": "Zone industrielle Sud", "actif": True})
+        site1, _ = Site.objects.get_or_create(
+            nom="Silo Nord", defaults={"adresse": "Zone industrielle Nord", "actif": True})
+        site2, _ = Site.objects.get_or_create(
+            nom="Silo Sud", defaults={"adresse": "Zone industrielle Sud", "actif": True})
 
         # Création des équipements
-        eq1, _ = Equipement.objects.get_or_create(site=site1, nom="Convoyeur A", defaults={"reference": "CA-001"})
-        eq2, _ = Equipement.objects.get_or_create(site=site1, nom="Élévateur B", defaults={"reference": "EB-002"})
-        eq3, _ = Equipement.objects.get_or_create(site=site2, nom="Trémie C", defaults={"reference": "TC-003"})
+        eq1, _ = Equipement.objects.get_or_create(
+            site=site1, nom="Convoyeur A", defaults={"reference": "CA-001"})
+        eq2, _ = Equipement.objects.get_or_create(
+            site=site1, nom="Élévateur B", defaults={"reference": "EB-002"})
+        eq3, _ = Equipement.objects.get_or_create(
+            site=site2, nom="Trémie C", defaults={"reference": "TC-003"})
 
         # Création des utilisateurs
         users = {}
@@ -65,19 +75,22 @@ class Command(BaseCommand):
                 defaults={
                     "first_name": u_data["first_name"],
                     "last_name": u_data["last_name"],
-                    "is_staff": u_data["role"] == Profile.Role.ADMIN,
+                    "is_staff": False,
                     "is_superuser": u_data["role"] == Profile.Role.ADMIN,
                 },
             )
             if created:
                 u.set_password(u_data["password"])
                 u.save()
-            Profile.objects.get_or_create(user=u, defaults={"role": u_data["role"]})
+            Profile.objects.get_or_create(
+                user=u, defaults={"role": u_data["role"]})
             users[u_data["username"]] = u
 
         # Association sites/utilisateurs
-        site1.utilisateurs.add(users["admin_demo"], users["maintenance_demo"], users["silo_demo"])
-        site2.utilisateurs.add(users["admin_demo"], users["silo2_demo"])
+        site1.utilisateurs.add(
+            users["admin_demo"], users["maintenance_demo"], users["silo_demo"])
+        site2.utilisateurs.add(
+            users["admin_demo"], users["silo_demo"], users["silo2_demo"])
 
         # Création de pannes
         panne1, _ = Panne.objects.get_or_create(
@@ -133,8 +146,11 @@ class Command(BaseCommand):
             },
         )
 
-        self.stdout.write(self.style.SUCCESS("Données de démonstration créées avec succès."))
+        self.stdout.write(self.style.SUCCESS(
+            "Données de démonstration créées avec succès."))
         self.stdout.write("")
-        self.stdout.write("Comptes de démonstration (NE PAS UTILISER EN PRODUCTION) :")
+        self.stdout.write(
+            "Comptes de démonstration (NE PAS UTILISER EN PRODUCTION) :")
         for u_data in DEMO_USERS:
-            self.stdout.write(f"  {u_data['username']} / {u_data['password']}  ({u_data['role']})")
+            self.stdout.write(
+                f"  {u_data['username']} / {u_data['password']}  ({u_data['role']})")

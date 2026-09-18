@@ -1,27 +1,99 @@
 {% extends "base.html" %}
-{% block title %}Nouvelle tâche préventive{% endblock %}
+{% block title %}{% if form.instance.pk %}Modifier la préventive{% else %}Déclarer une préventive{% endif %}{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-8">
-        <div class="card">
-            <div class="card-header"><h5 class="mb-0"><i class="bi bi-plus-lg"></i> Nouvelle tâche préventive</h5></div>
-            <div class="card-body">
-                <form method="post" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    {% for field in form %}
+<header class="page-heading">
+    <div>
+        <p class="eyebrow mb-1">Planification</p>
+        <h1 class="page-title">{% if form.instance.pk %}Modifier la préventive{% else %}Déclarer une préventive{% endif %}</h1>
+        <p class="page-subtitle">Préparez l’intervention, choisissez son destinataire et fixez son échéance.</p>
+    </div>
+</header>
+
+<form method="post" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="row g-4 align-items-start">
+        <div class="col-xl-8">
+            <section class="card h-100">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="bi bi-clipboard2-check text-success"></i>
+                    <span>Intervention à planifier</span>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="{{ form.site.id_for_label }}">Site <span class="text-danger">*</span></label>
+                            {{ form.site }}
+                            {% if form.site.errors %}<div class="invalid-feedback d-block">{{ form.site.errors|striptags }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="{{ form.equipement.id_for_label }}">Équipement</label>
+                            {{ form.equipement }}
+                            {% if form.equipement.errors %}<div class="invalid-feedback d-block">{{ form.equipement.errors|striptags }}</div>{% endif %}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" for="{{ form.titre.id_for_label }}">Titre <span class="text-danger">*</span></label>
+                            {{ form.titre }}
+                            {% if form.titre.errors %}<div class="invalid-feedback d-block">{{ form.titre.errors|striptags }}</div>{% endif %}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" for="{{ form.description.id_for_label }}">Travaux à réaliser <span class="text-danger">*</span></label>
+                            {{ form.description }}
+                            {% if form.description.errors %}<div class="invalid-feedback d-block">{{ form.description.errors|striptags }}</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-xl-4">
+            <section class="card">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="bi bi-calendar-check text-primary"></i>
+                    <span>Affectation et échéance</span>
+                </div>
+                <div class="card-body">
                     <div class="mb-3">
-                        <label class="form-label">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
-                        {{ field }}
-                        {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+                        <label class="form-label fw-semibold" for="{{ form.affecte_a.id_for_label }}">Agent de silo <span class="text-danger">*</span></label>
+                        {{ form.affecte_a }}
+                        {% if form.affecte_a.errors %}<div class="invalid-feedback d-block">{{ form.affecte_a.errors|striptags }}</div>{% endif %}
                     </div>
-                    {% endfor %}
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-success">Créer (brouillon)</button>
-                        <a href="{% url 'preventive_liste' %}" class="btn btn-secondary">Annuler</a>
+                    <div>
+                        <label class="form-label fw-semibold" for="{{ form.date_echeance.id_for_label }}">Date d’échéance <span class="text-danger">*</span></label>
+                        {{ form.date_echeance }}
+                        {% if form.date_echeance.errors %}<div class="invalid-feedback d-block">{{ form.date_echeance.errors|striptags }}</div>{% endif %}
                     </div>
-                </form>
-            </div>
+                    <hr class="my-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="{{ form.periodicite.id_for_label }}">Périodicité</label>
+                        {{ form.periodicite }}
+                        {% if form.periodicite.errors %}<div class="invalid-feedback d-block">{{ form.periodicite.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="form-check mb-3">
+                        {{ form.recurrence_active }}
+                        <label class="form-check-label fw-semibold" for="{{ form.recurrence_active.id_for_label }}">Génération automatique active</label>
+                        {% if form.recurrence_active.errors %}<div class="invalid-feedback d-block">{{ form.recurrence_active.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div>
+                        <label class="form-label fw-semibold" for="{{ form.recurrence_jusquau.id_for_label }}">Répéter jusqu’au</label>
+                        {{ form.recurrence_jusquau }}
+                        <div class="form-text">Facultatif. Sans date, la série reste active.</div>
+                        {% if form.recurrence_jusquau.errors %}<div class="invalid-feedback d-block">{{ form.recurrence_jusquau.errors|striptags }}</div>{% endif %}
+                    </div>
+                </div>
+            </section>
         </div>
     </div>
-</div>
+
+    <div class="d-flex justify-content-end gap-2 mt-4">
+        <a href="{% if form.instance.pk %}{% url 'preventive_detail' form.instance.pk %}{% else %}{% url 'preventive_liste' %}{% endif %}" class="btn btn-outline-secondary">Annuler</a>
+        <button type="submit" class="btn btn-success">
+            <i class="bi bi-{% if form.instance.pk %}check-lg{% else %}calendar-plus{% endif %} me-1"></i>
+            {% if form.instance.pk %}Enregistrer les modifications{% else %}Créer la préventive{% endif %}
+        </button>
+    </div>
+</form>
 {% endblock %}

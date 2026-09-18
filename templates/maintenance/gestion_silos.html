@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Gestion silos{% endblock %}
+{% block content %}
+<header class="page-heading">
+    <div><p class="eyebrow mb-1">Stockage des grains</p><h1 class="page-title">Stocks silos</h1><p class="page-subtitle">Suivez les tonnages des cellules et des stockages à plat de vos sites.</p></div>
+    <div class="action-group">{% if profile.is_admin %}<a class="btn btn-outline-primary" href="{% url 'type_grain_create' %}"><i class="bi bi-plus-lg me-1"></i>Type de grain</a>{% endif %}<a class="btn btn-primary" href="{% url 'stockage_a_plat_create' %}"><i class="bi bi-plus-lg me-1"></i>Ajouter un stockage à plat</a>{% if profile.is_admin %}<a class="btn btn-outline-primary" href="{% url 'cellule_grain_create' %}"><i class="bi bi-plus-lg me-1"></i>Nouvelle cellule</a>{% endif %}</div>
+</header>
+
+<form method="get" class="toolbar mb-4">
+    <div><label class="form-label" for="silo-site">Site</label><select class="form-select" id="silo-site" name="site"><option value="">Tous mes sites</option>{% for site in sites %}<option value="{{ site.pk }}" {% if request.GET.site == site.pk|stringformat:'s' %}selected{% endif %}>{{ site.nom }}</option>{% endfor %}</select></div>
+    <div><label class="form-label" for="silo-type-grain">Type de céréale</label><select class="form-select" id="silo-type-grain" name="type_grain"><option value="">Toutes les céréales</option>{% for grain in filtres_types_grain %}<option value="{{ grain.pk }}" {% if request.GET.type_grain == grain.pk|stringformat:'s' %}selected{% endif %}>{{ grain.nom }}</option>{% endfor %}</select></div>
+    <button class="btn btn-primary" type="submit"><i class="bi bi-funnel me-1"></i>Filtrer</button>
+</form>
+
+<div class="row g-3 mb-4">
+    {% for cellule in cellules %}
+    {% with dernier=cellule.dernier_releve %}
+    <div class="col-xl-3 col-md-6">
+        <article class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center gap-2"><span class="text-truncate"><i class="bi bi-database me-2 text-primary"></i>{{ cellule.nom }}{% if cellule.type_grain %} <span class="badge text-bg-primary ms-1">{{ cellule.type_grain.nom }}</span>{% endif %}</span><span class="badge flex-shrink-0 {% if not cellule.actif %}text-bg-secondary{% elif cellule.etat == 'en_service' %}text-bg-success{% elif cellule.etat == 'vide' %}text-bg-light border text-dark{% else %}text-bg-warning{% endif %}">{% if not cellule.actif %}Inactive{% else %}{{ cellule.get_etat_display }}{% endif %}</span></div>
+            <div class="card-body">
+                <p class="small text-muted mb-3"><i class="bi bi-geo-alt me-1"></i>{{ cellule.site.nom }} · {{ cellule.silo.nom }}{% if cellule.marque %} · {{ cellule.marque }}{% endif %}{% if cellule.type_grain %} · Capacité {{ cellule.capacite_tonnes|floatformat:0 }} t{% elif cellule.etat == 'en_service' %} · <span class="text-warning fw-semibold">Grain à configurer</span>{% endif %}</p>
+                {% if cellule.etat == 'vide' %}<div class="empty-state py-3"><i class="bi bi-box"></i>Cellule vide, disponible pour un prochain stockage.</div>
+                {% elif cellule.etat == 'reparation' or cellule.etat == 'nettoyage' %}<div class="empty-state py-3"><i class="bi bi-tools"></i>{{ cellule.get_etat_display }} en cours.</div>
+                {% elif dernier %}
+                <div class="row g-3 text-center">
+                    <div class="col-6"><div class="fw-bold fs-5">{{ dernier.taux_remplissage|floatformat:1 }} %</div><div class="small text-muted">Remplissage</div></div>
+                    <div class="col-6"><div class="fw-bold fs-5">{{ dernier.masse_estimee_tonnes|floatformat:1 }} t</div><div class="small text-muted">Masse</div></div>
+                </div>
+                <hr><div class="d-flex justify-content-between small"><span class="fw-semibold">{{ dernier.type_grain.nom }}</span><span class="text-muted">{{ dernier.releve_le|date:"d/m/Y H:i" }}</span></div>
+                {% else %}<div class="empty-state py-3"><i class="bi bi-box-seam"></i>Aucun stock enregistré.</div>{% endif %}
+            </div>
+            <div class="card-footer d-flex justify-content-between"><a class="btn btn-sm btn-outline-secondary" href="{% url 'cellule_grain_detail' cellule.pk %}"><i class="bi bi-clock-history me-1"></i>Historique</a><div class="action-group">{% if profile.is_admin %}<a class="btn btn-sm btn-outline-primary" href="{% url 'cellule_grain_update' cellule.pk %}" title="Configurer"><i class="bi bi-pencil"></i></a>{% endif %}{% if profile.is_silo and cellule.peut_recevoir_stock %}<a class="btn btn-sm btn-primary" href="{% url 'cellule_grain_relever' cellule.pk %}"><i class="bi bi-box-arrow-in-down me-1"></i>Saisir le stock</a>{% endif %}</div></div>
+        </article>
+    </div>
+    {% endwith %}
+    {% empty %}<div class="col-12"><div class="empty-state"><i class="bi bi-database"></i>Aucune cellule configurée sur les sites accessibles.</div></div>{% endfor %}
+</div>
+
+<section class="mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3"><div><p class="eyebrow mb-1">Moisson</p><h2 class="h4 mb-0">Stockages à plat</h2></div><a class="btn btn-sm btn-primary" href="{% url 'stockage_a_plat_create' %}"><i class="bi bi-plus-lg me-1"></i>Ajouter</a></div>
+    {% if stockages_a_plat %}
+    <div class="row g-3">
+        {% for stockage in stockages_a_plat %}
+        <div class="col-xl-3 col-md-6">
+            <article class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center"><span><i class="bi bi-building me-2 text-primary"></i>Stockage temporaire</span>{% if stockage.actif %}<span class="badge text-bg-success">Actif</span>{% else %}<span class="badge text-bg-secondary">Inactif</span>{% endif %}</div>
+                <div class="card-body">
+                    <p class="small text-muted mb-3"><i class="bi bi-geo-alt me-1"></i>{{ stockage.site.nom }}</p>
+                    {% if stockage.derniers_releves_par_grain %}<div class="vstack gap-2">{% for releve in stockage.derniers_releves_par_grain %}<div class="d-flex justify-content-between align-items-baseline gap-2"><span class="small fw-semibold">{{ releve.type_grain.nom }}</span><span class="fw-bold text-nowrap">{{ releve.tonnage|floatformat:1 }} t</span></div>{% endfor %}</div>{% else %}<div class="empty-state py-3"><i class="bi bi-box-seam"></i>Aucun stock enregistré.</div>{% endif %}
+                </div>
+                <div class="card-footer d-flex justify-content-between"><a class="btn btn-sm btn-outline-secondary" href="{% url 'stockage_a_plat_detail' stockage.pk %}"><i class="bi bi-clock-history me-1"></i>Historique</a><div class="action-group">{% if profile.is_admin %}<a class="btn btn-sm btn-outline-primary" href="{% url 'stockage_a_plat_update' stockage.pk %}" title="Configurer"><i class="bi bi-pencil"></i></a>{% endif %}{% if profile.is_silo and stockage.actif %}<a class="btn btn-sm btn-primary" href="{% url 'stockage_a_plat_relever' stockage.pk %}"><i class="bi bi-box-arrow-in-down me-1"></i>Saisir le stock</a>{% endif %}</div></div>
+            </article>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="bi bi-building"></i><p class="mb-3">Aucun stockage à plat configuré sur les sites accessibles.</p><a class="btn btn-primary" href="{% url 'stockage_a_plat_create' %}"><i class="bi bi-plus-lg me-1"></i>Créer le premier stockage à plat</a></div>
+    {% endif %}
+</section>
+
+{% if profile.is_admin %}
+<section class="mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-3"><div><p class="eyebrow mb-1">Référentiel</p><h2 class="h4 mb-0">Types de grain</h2></div><a class="btn btn-sm btn-outline-primary" href="{% url 'type_grain_create' %}"><i class="bi bi-plus-lg me-1"></i>Ajouter</a></div>
+    <div class="table-shell"><div class="table-responsive"><table class="table table-hover"><thead><tr><th>Grain</th><th>Poids spécifique moyen</th><th>État</th><th></th></tr></thead><tbody>{% for grain in types_grain %}<tr><td class="fw-semibold">{{ grain.nom }}</td><td>{{ grain.poids_specifique_moyen|floatformat:2 }} kg/hl</td><td>{% if grain.actif %}<span class="badge text-bg-success">Actif</span>{% else %}<span class="badge text-bg-secondary">Inactif</span>{% endif %}</td><td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'type_grain_update' grain.pk %}" title="Modifier"><i class="bi bi-pencil"></i></a></td></tr>{% empty %}<tr><td colspan="4">Aucun type de grain.</td></tr>{% endfor %}</tbody></table></div></div>
+</section>
+{% endif %}
+{% endblock %}

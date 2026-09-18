@@ -1,141 +1,219 @@
 {% extends "base.html" %}
-{% block title %}Tableau de bord{% endblock %}
+{% load static %}
+{% block title %}{% if profile.is_admin %}Gestion de silos Agri Négoce{% else %}Tableau de bord{% endif %}{% endblock %}
 {% block content %}
-<h2 class="mb-4"><i class="bi bi-speedometer2"></i> Tableau de bord</h2>
+{% if profile.is_admin %}
+{% include "maintenance/_dashboard_admin.html" %}
+{% else %}
+<header class="page-heading">
+    <div class="dashboard-title-lockup">
+        <img class="dashboard-logo" src="{% static 'logo.jpg' %}" alt="Agri Négoce">
+        <div>
+            <p class="eyebrow mb-1">Vue d'ensemble</p>
+            <h1 class="page-title">Tableau de bord</h1>
+            <p class="page-subtitle">Priorités, interventions et tâches à traiter sur vos sites.</p>
+        </div>
+    </div>
+    {% if profile.is_admin or profile.is_silo %}
+    <a href="{% url 'panne_creer' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Déclarer une panne</a>
+    {% endif %}
+</header>
 
 {% if profile.role == "admin" %}
 <div class="row g-3 mb-4">
     <div class="col-sm-6 col-lg-3">
-        <div class="card border-warning text-center">
-            <div class="card-body">
-                <div class="fs-1 text-warning">{{ pannes_ouvertes }}</div>
-                <div class="text-muted">Pannes ouvertes</div>
+        <a class="card metric-card metric-warning text-decoration-none text-reset h-100{% if pannes_non_assignees %} metric-card-alerting{% endif %}" href="{% url 'panne_liste' %}" data-open-incidents-card>
+            <div class="card-body d-flex justify-content-between">
+                <div><div class="metric-label">Pannes</div><div class="metric-value" data-open-incidents-count>{{ pannes_ouvertes }}</div></div>
+                <i class="bi {% if pannes_non_assignees %}bi-bell-fill{% else %}bi-exclamation-diamond{% endif %} metric-icon" data-open-incidents-icon></i>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-sm-6 col-lg-3">
-        <div class="card border-danger text-center">
-            <div class="card-body">
-                <div class="fs-1 text-danger">{{ pannes_critiques }}</div>
-                <div class="text-muted">Pannes critiques</div>
+        <a class="card metric-card metric-danger text-decoration-none text-reset h-100" href="{% url 'panne_liste' %}?priorite=critique">
+            <div class="card-body d-flex justify-content-between">
+                <div><div class="metric-label">Pannes critiques</div><div class="metric-value">{{ pannes_critiques }}</div></div>
+                <i class="bi bi-fire metric-icon"></i>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-sm-6 col-lg-3">
-        <div class="card border-secondary text-center">
-            <div class="card-body">
-                <div class="fs-1 text-secondary">{{ preventives_retard }}</div>
-                <div class="text-muted">Préventives en retard</div>
+        <a class="card metric-card metric-info text-decoration-none text-reset h-100" href="{% url 'preventive_liste' %}?statut=en_retard">
+            <div class="card-body d-flex justify-content-between">
+                <div><div class="metric-label">Préventives en retard</div><div class="metric-value">{{ preventives_retard }}</div></div>
+                <i class="bi bi-clock-history metric-icon"></i>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-sm-6 col-lg-3">
-        <div class="card border-info text-center">
-            <div class="card-body">
-                <div class="fs-1 text-info">{{ factures_non_validees }}</div>
-                <div class="text-muted">Factures à valider</div>
+        <a class="card metric-card metric-success text-decoration-none text-reset h-100" href="{% url 'facture_list' %}?statut=brouillon">
+            <div class="card-body d-flex justify-content-between">
+                <div><div class="metric-label">Factures à valider</div><div class="metric-value">{{ factures_non_validees }}</div></div>
+                <i class="bi bi-receipt metric-icon"></i>
             </div>
-        </div>
+        </a>
     </div>
 </div>
 
 {% elif profile.role == "maintenance" %}
 <div class="row g-3 mb-4">
-    <div class="col-sm-4">
-        <div class="card border-warning text-center">
-            <div class="card-body">
-                <div class="fs-1 text-warning">{{ pannes_a_affecter }}</div>
-                <div class="text-muted">Pannes à affecter</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-4">
-        <div class="card border-primary text-center">
-            <div class="card-body">
-                <div class="fs-1 text-primary">{{ pannes_assignees }}</div>
-                <div class="text-muted">Pannes assignées</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-4">
-        <div class="card border-success text-center">
-            <div class="card-body">
-                <div class="fs-1 text-success">{{ preventives_a_valider }}</div>
-                <div class="text-muted">Préventives à valider</div>
-            </div>
-        </div>
+    <div class="col-sm-6 col-lg-4">
+        <a class="card metric-card metric-info text-decoration-none text-reset h-100" href="{% url 'panne_liste' %}"><div class="card-body"><div class="metric-label">Pannes assignées</div><div class="metric-value">{{ pannes_affectees }}</div></div></a>
     </div>
 </div>
 
 {% elif profile.role == "silo" %}
 <div class="row g-3 mb-4">
-    <div class="col-sm-4">
-        <div class="card border-warning text-center">
-            <div class="card-body">
-                <div class="fs-1 text-warning">{{ pannes_declarees }}</div>
-                <div class="text-muted">Pannes déclarées</div>
-            </div>
-        </div>
+    <div class="col-sm-6">
+        <a class="card metric-card metric-warning text-decoration-none text-reset h-100" href="{% url 'panne_liste' %}"><div class="card-body"><div class="metric-label">Pannes déclarées</div><div class="metric-value">{{ pannes_declarees }}</div></div></a>
     </div>
-    <div class="col-sm-4">
-        <div class="card border-info text-center">
-            <div class="card-body">
-                <div class="fs-1 text-info">{{ taches_recues }}</div>
-                <div class="text-muted">Tâches reçues</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-4">
-        <div class="card border-primary text-center">
-            <div class="card-body">
-                <div class="fs-1 text-primary">{{ taches_en_cours }}</div>
-                <div class="text-muted">Tâches en cours</div>
-            </div>
-        </div>
+    <div class="col-sm-6">
+        <a class="card metric-card metric-info text-decoration-none text-reset h-100" href="{% url 'preventive_liste' %}?statut=recue"><div class="card-body"><div class="metric-label">Préventives</div><div class="metric-value">{{ taches_recues }}</div></div></a>
     </div>
 </div>
 {% endif %}
 
 <div class="row g-3">
     <div class="col-lg-6">
-        <div class="card">
+        <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-exclamation-triangle"></i> Pannes récentes</span>
+                <span><i class="bi bi-exclamation-diamond me-2"></i>{% if profile.is_maintenance %}Mes pannes{% else %}Pannes récentes{% endif %}</span>
+                {% if profile.is_maintenance or profile.is_silo %}
+                <span class="priority-column small text-muted d-inline-flex justify-content-center flex-shrink-0">Priorité</span>
+                {% else %}
                 <a href="{% url 'panne_liste' %}" class="btn btn-sm btn-outline-secondary">Toutes</a>
+                {% endif %}
             </div>
             <div class="list-group list-group-flush">
                 {% for panne in pannes_recentes %}
-                <a href="{% url 'panne_detail' panne.pk %}" class="list-group-item list-group-item-action d-flex justify-content-between">
-                    <span>{{ panne.titre|truncatechars:50 }}</span>
-                    <span class="badge bg-{% if panne.priorite == 'critique' %}danger{% elif panne.priorite == 'haute' %}warning text-dark{% else %}secondary{% endif %}">
-                        {{ panne.get_priorite_display }}
-                    </span>
+                {% if profile.is_admin %}
+                <a href="{% url 'panne_detail' panne.pk %}" class="list-group-item list-group-item-action dashboard-recent-item">
+                    <div class="dashboard-recent-main">
+                        <strong class="dashboard-recent-title">{{ panne.titre|truncatechars:50 }}</strong>
+                        <div class="dashboard-recent-meta">
+                            <span><i class="bi bi-building"></i>{{ panne.site.nom }}</span>
+                            <span><i class="bi bi-person-gear"></i>{% if panne.affecte_a %}{{ panne.affecte_a.get_full_name|default:panne.affecte_a.username }}{% else %}Non affectée{% endif %}</span>
+                            <span><i class="bi bi-calendar3"></i>{{ panne.date_signalement|date:"d/m/Y H:i" }}</span>
+                        </div>
+                    </div>
+                    <span class="badge flex-shrink-0 bg-{% if panne.priorite == 'critique' %}danger{% elif panne.priorite == 'haute' %}warning text-dark{% else %}secondary{% endif %}">{{ panne.get_priorite_display }}</span>
                 </a>
+                {% else %}
+                <a href="{% url 'panne_detail' panne.pk %}" class="list-group-item list-group-item-action d-flex align-items-center gap-2">
+                    <span class="me-auto text-truncate">{{ panne.titre|truncatechars:50 }}</span>
+                        {% if profile.is_silo %}
+                        <span class="badge flex-shrink-0 bg-{% if panne.statut == 'cloturee' or panne.statut == 'resolue' %}success{% elif panne.statut == 'en_cours' %}primary{% elif panne.statut == 'attente_piece' or panne.statut == 'imprevus' %}warning text-dark{% else %}secondary{% endif %}">
+                            {{ panne.get_statut_display }}
+                        </span>
+                        {% endif %}
+                        <span class="priority-column d-inline-flex justify-content-center flex-shrink-0">
+                            <span class="badge bg-{% if panne.priorite == 'critique' %}danger{% elif panne.priorite == 'haute' %}warning text-dark{% else %}secondary{% endif %}">
+                                {{ panne.get_priorite_display }}
+                            </span>
+                        </span>
+                </a>
+                    {% endif %}
                 {% empty %}
-                <div class="list-group-item text-muted">Aucune panne.</div>
+                <div class="empty-state"><i class="bi bi-check2-circle"></i>Aucune panne récente.</div>
                 {% endfor %}
             </div>
         </div>
     </div>
     <div class="col-lg-6">
-        <div class="card">
+        <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-calendar-check"></i> Tâches préventives récentes</span>
-                <a href="{% url 'preventive_liste' %}" class="btn btn-sm btn-outline-secondary">Toutes</a>
+                <span><i class="bi bi-calendar2-check me-2"></i>Tâches préventives récentes</span>
             </div>
             <div class="list-group list-group-flush">
                 {% for p in preventives_recentes %}
+                {% if profile.is_admin %}
+                <a href="{% url 'preventive_detail' p.pk %}" class="list-group-item list-group-item-action dashboard-recent-item">
+                    <div class="dashboard-recent-main">
+                        <strong class="dashboard-recent-title">{{ p.titre|truncatechars:50 }}</strong>
+                        <div class="dashboard-recent-meta">
+                            <span><i class="bi bi-building"></i>{{ p.site.nom }}</span>
+                            <span><i class="bi bi-person-check"></i>{% if p.affecte_a %}{{ p.affecte_a.get_full_name|default:p.affecte_a.username }}{% else %}Non affectée{% endif %}</span>
+                            <span><i class="bi bi-calendar-event"></i>Échéance {{ p.date_echeance|date:"d/m/Y H:i" }}</span>
+                        </div>
+                    </div>
+                    <span class="badge flex-shrink-0 bg-{% if p.statut == 'en_retard' %}danger{% elif p.statut == 'a_valider' %}warning text-dark{% elif p.statut == 'validee' %}success{% else %}secondary{% endif %}">{{ p.get_statut_display }}</span>
+                </a>
+                {% else %}
                 <a href="{% url 'preventive_detail' p.pk %}" class="list-group-item list-group-item-action d-flex justify-content-between">
                     <span>{{ p.titre|truncatechars:50 }}</span>
                     <span class="badge bg-{% if p.statut == 'en_retard' %}danger{% elif p.statut == 'a_valider' %}warning text-dark{% elif p.statut == 'validee' %}success{% else %}secondary{% endif %}">
                         {{ p.get_statut_display }}
                     </span>
                 </a>
+                {% endif %}
                 {% empty %}
-                <div class="list-group-item text-muted">Aucune tâche.</div>
+                <div class="empty-state"><i class="bi bi-calendar2-check"></i>Aucune tâche récente.</div>
                 {% endfor %}
             </div>
         </div>
     </div>
 </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+const analyticsNode = document.getElementById("dashboard-analytics-data");
+if (analyticsNode && window.Chart) {
+    const analytics = JSON.parse(analyticsNode.textContent);
+    const axisColor = "#506983";
+    const gridColor = "rgba(80, 105, 131, 0.14)";
+    const shared = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
+    new Chart(document.getElementById("dashboard-pannes-trend"), {
+        type: "line",
+        data: { labels: analytics.labels, datasets: [{ data: analytics.pannes, borderColor: "#bd3f38", backgroundColor: "rgba(189,63,56,.12)", fill: true, tension: .35, pointRadius: 4, pointHoverRadius: 6 }] },
+        options: { ...shared, scales: { x: { ticks: { color: axisColor }, grid: { display: false } }, y: { beginAtZero: true, ticks: { precision: 0, color: axisColor }, grid: { color: gridColor } } } },
+    });
+    new Chart(document.getElementById("dashboard-cost-trend"), {
+        type: "bar",
+        data: { labels: analytics.labels, datasets: [{ data: analytics.factures, backgroundColor: "#005eb8", borderRadius: 5 }] },
+        options: { ...shared, scales: { x: { ticks: { color: axisColor }, grid: { display: false } }, y: { beginAtZero: true, ticks: { color: axisColor, callback: (value) => `${value} €` }, grid: { color: gridColor } } } },
+    });
+}
+const extendedNode = document.getElementById("dashboard-analytics-extended");
+if (extendedNode && window.Chart) {
+    const extended = JSON.parse(extendedNode.textContent);
+    const axisColor = "#506983";
+    const gridColor = "rgba(80, 105, 131, 0.14)";
+    const shared = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
+    new Chart(document.getElementById("dashboard-preventive-rate"), {
+        type: "doughnut",
+        data: { labels: ["À temps", "À traiter"], datasets: [{ data: [extended.preventive_rate, 100 - extended.preventive_rate], backgroundColor: ["#3d9568", "#e8eef3"], borderWidth: 3, borderColor: "#fff" }] },
+        options: { ...shared, cutout: "70%", plugins: { legend: { position: "bottom", labels: { color: axisColor, usePointStyle: true, boxWidth: 8 } } } },
+    });
+    new Chart(document.getElementById("dashboard-site-costs"), {
+        type: "bar",
+        data: { labels: extended.site_costs.map((item) => item.label), datasets: [{ data: extended.site_costs.map((item) => item.cost), backgroundColor: "#d9822b", borderRadius: 5 }] },
+        options: { ...shared, indexAxis: "y", scales: { x: { beginAtZero: true, ticks: { color: axisColor, callback: (value) => `${value} €` }, grid: { color: gridColor } }, y: { ticks: { color: axisColor }, grid: { display: false } } } },
+    });
+    new Chart(document.getElementById("dashboard-equipment-mtbf"), {
+        type: "bar",
+        data: { labels: extended.equipment_mtbf.map((item) => item.label), datasets: [{ data: extended.equipment_mtbf.map((item) => item.days), backgroundColor: "#0074a8", borderRadius: 5 }] },
+        options: { ...shared, indexAxis: "y", scales: { x: { beginAtZero: true, ticks: { color: axisColor, callback: (value) => `${value} j` }, grid: { color: gridColor } }, y: { ticks: { color: axisColor }, grid: { display: false } } } },
+    });
+}
+
+document.querySelectorAll("[data-dashboard-tab]").forEach((tab) => {
+    tab.addEventListener("click", () => {
+        const target = document.querySelector(tab.dataset.bsTarget);
+        if (!target) return;
+
+        document.querySelectorAll("[data-dashboard-tab]").forEach((item) => {
+            item.classList.toggle("active", item === tab);
+            item.setAttribute("aria-selected", item === tab ? "true" : "false");
+        });
+        document.querySelectorAll(".executive-domain-content > .tab-pane").forEach((panel) => {
+            const isTarget = panel === target;
+            panel.classList.toggle("active", isTarget);
+            panel.classList.toggle("show", isTarget);
+        });
+    });
+});
+</script>
 {% endblock %}

@@ -29,83 +29,319 @@
             </div>
         </div>
 
+        {% if can_edit_panne %}
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <a class="btn btn-outline-primary" href="{% url 'panne_update' panne.pk %}">
+                <i class="bi bi-pencil"></i> Modifier la panne
+            </a>
+            <a class="btn btn-outline-danger" href="{% url 'panne_delete' panne.pk %}">
+                <i class="bi bi-trash"></i> Supprimer la panne
+            </a>
+        </div>
+        {% endif %}
+
         {% if profile.role != 'silo' %}
         <!-- Actions -->
-        <div class="card mb-3">
-            <div class="card-header">Actions</div>
-            <div class="card-body">
-                <div class="d-flex gap-2 flex-wrap">
-                    {% if panne.statut == 'nouvelle' or panne.statut == 'affectee' %}
-                    <a href="{% url 'panne_affecter' panne.pk %}" class="btn btn-primary">
-                        <i class="bi bi-person-check"></i> Affecter
-                    </a>
+        <div class="card panne-actions-card mb-3">
+            <div class="card-header panne-section-header">
+                <span class="panne-section-icon"><i class="bi bi-sliders"></i></span>
+                <div>
+                    <strong>Gestion de la panne</strong>
+                    <small>Affectation, priorité et avancement</small>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="panne-actions-grid">
+                    {% if affectation_form and panne.statut != 'cloturee' %}
+                    <section class="panne-action-section">
+                        <div class="panne-action-heading">
+                            <i class="bi bi-person-gear"></i>
+                            <div>
+                                <h6>Affectation</h6>
+                                <p>Choisir l’agent responsable de l’intervention.</p>
+                            </div>
+                        </div>
+                        <form method="post" action="{% url 'panne_affecter' panne.pk %}" class="panne-action-form">
+                        {% csrf_token %}
+                        <div class="panne-action-field">
+                            <label for="id_affecte_a" class="form-label">Agent de maintenance</label>
+                            {{ affectation_form.affecte_a }}
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-person-check me-1"></i>
+                            {% if panne.affecte_a %}Réassigner{% else %}Assigner{% endif %}
+                        </button>
+                        </form>
+                    </section>
                     {% endif %}
-                    {% if transitions_autorisees %}
-                    <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#statutModal">
-                        <i class="bi bi-arrow-right-circle"></i> Changer le statut
-                    </button>
+
+                    {% if priorite_form or transitions_autorisees %}
+                    <section class="panne-action-section">
+                        <div class="panne-action-heading">
+                            <i class="bi bi-signpost-split"></i>
+                            <div>
+                                <h6>Pilotage</h6>
+                                <p>Ajuster l’urgence et faire avancer le traitement.</p>
+                            </div>
+                        </div>
+                        <div class="panne-action-stack">
+                            {% if priorite_form %}
+                            <form method="post" action="{% url 'panne_modifier_priorite' panne.pk %}" class="panne-action-form">
+                                {% csrf_token %}
+                                <div class="panne-action-field">
+                                    <label for="{{ priorite_form.priorite.id_for_label }}" class="form-label">Priorité</label>
+                                    {{ priorite_form.priorite }}
+                                </div>
+                                <button type="submit" class="btn btn-outline-primary">
+                                    <i class="bi bi-flag me-1"></i>Mettre à jour
+                                </button>
+                            </form>
+                            {% endif %}
+                            {% if transitions_autorisees %}
+                            <form method="post" action="{% url 'panne_changer_statut' panne.pk %}" class="panne-action-form">
+                                {% csrf_token %}
+                                <div class="panne-action-field">
+                                    <label for="id_nouveau_statut_inline" class="form-label">Statut</label>
+                                    <select id="id_nouveau_statut_inline" name="nouveau_statut" class="form-select" required>
+                                        {% for valeur, libelle in transitions_autorisees %}
+                                        <option value="{{ valeur }}">{{ libelle }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-outline-primary">
+                                    <i class="bi bi-arrow-repeat me-1"></i>Mettre à jour
+                                </button>
+                            </form>
+                            <button type="button" class="btn btn-sm btn-link panne-status-comment" data-bs-toggle="modal" data-bs-target="#statutModal">
+                                <i class="bi bi-chat-left-text me-1"></i>Ajouter un commentaire au changement
+                            </button>
+                            {% endif %}
+                        </div>
+                    </section>
                     {% endif %}
                 </div>
+
+                {% if profile.is_admin %}
+                <div class="panne-actions-danger">
+                    <div class="panne-danger-label">
+                        <i class="bi bi-exclamation-octagon"></i>
+                        <div>
+                            <strong>Zone sensible</strong>
+                            <span>La suppression retire définitivement la panne et ses fichiers associés.</span>
+                        </div>
+                    </div>
+                    <a class="btn btn-outline-danger" href="{% url 'panne_delete' panne.pk %}">
+                        <i class="bi bi-trash me-1"></i>Supprimer la panne
+                    </a>
+                </div>
+                {% endif %}
             </div>
         </div>
         {% endif %}
 
-        <!-- Médias -->
+        {% if afficher_temps_intervention %}
+        <div class="card intervention-card mb-3">
+            <div class="card-header panne-section-header">
+                <span class="panne-section-icon"><i class="bi bi-stopwatch"></i></span>
+                <div class="me-auto">
+                    <strong>Temps d’intervention</strong>
+                    <small>Suivi des heures consacrées à cette panne</small>
+                </div>
+                <span class="intervention-header-total">
+                    {{ total_temps_minutes|default:0 }} min
+                    {% if profile.is_admin %}<small>{{ cout_total_intervention|default:0|floatformat:2 }} €</small>{% endif %}
+                </span>
+            </div>
+            <div class="card-body">
+                {% if temps_intervention_form %}
+                <form method="post" action="{% url 'panne_ajouter_temps_intervention' panne.pk %}" class="intervention-entry-form">
+                    {% csrf_token %}
+                    <div class="intervention-form-grid">
+                        <div class="intervention-field">
+                            <label class="form-label" for="id_date_intervention">Date</label>
+                            {{ temps_intervention_form.date_intervention }}
+                        </div>
+                        <div class="intervention-field">
+                            <label class="form-label" for="id_duree_heures">Durée (heures)</label>
+                            {{ temps_intervention_form.duree_heures }}
+                        </div>
+                        <div class="intervention-field intervention-comment-field">
+                            <label class="form-label" for="id_commentaire">Commentaire</label>
+                            {{ temps_intervention_form.commentaire }}
+                        </div>
+                        <div class="intervention-submit">
+                            <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Enregistrer</button>
+                        </div>
+                    </div>
+                    {% if temps_intervention_form.errors %}
+                    <div class="alert alert-danger py-2 mb-0 mt-3">{{ temps_intervention_form.errors }}</div>
+                    {% endif %}
+                </form>
+                {% endif %}
+
+                <div class="intervention-summary{% if not profile.is_admin %} intervention-summary-single{% endif %}">
+                    <div class="intervention-stat">
+                        <span><i class="bi bi-check2-circle"></i>Main d’œuvre validée</span>
+                        <strong>{{ total_temps_minutes|default:0 }} min{% if profile.is_admin %} · {{ cout_total_intervention|default:0|floatformat:2 }} €{% endif %}</strong>
+                    </div>
+                    {% if profile.is_admin %}
+                    <div class="intervention-stat intervention-stat-total">
+                        <span><i class="bi bi-calculator"></i>Total global panne (HT + main d’œuvre)</span>
+                        <strong>{{ cout_total_global|default:0|floatformat:2 }} € HT</strong>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="intervention-history-heading">
+                    <h6>Historique des interventions</h6>
+                    {% if temps_interventions %}<span>{{ temps_interventions|length }} enregistrée{{ temps_interventions|length|pluralize }}</span>{% endif %}
+                </div>
+                {% if temps_interventions %}
+                    <div class="intervention-list">
+                    {% for temps in temps_interventions %}
+                    <div class="intervention-list-item">
+                        <div class="intervention-date">
+                            <i class="bi bi-calendar3"></i>
+                            <strong>{{ temps.date_intervention|date:"d/m/Y" }}</strong>
+                        </div>
+                        <div class="intervention-comment">{{ temps.commentaire|default:"Sans commentaire" }}</div>
+                        <div class="intervention-duration">
+                            <strong>{{ temps.duree_minutes }} min</strong>
+                            {% if profile.is_admin %}<small>{{ temps.montant|floatformat:2 }} €</small>{% endif %}
+                        </div>
+                        <span class="badge bg-{% if temps.validee %}success{% else %}warning text-dark{% endif %}">{% if temps.validee %}Validée{% else %}À valider{% endif %}</span>
+                        {% if profile.is_admin and not temps.validee %}
+                        <form method="post" action="{% url 'panne_valider_temps_intervention' panne.pk temps.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-success"><i class="bi bi-check-lg me-1"></i>Valider</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="intervention-empty">
+                        <i class="bi bi-clock-history"></i>
+                        <span>Aucune intervention enregistrée.</span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Médias terrain -->
         <div class="card mb-3">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-paperclip"></i> Fichiers joints ({{ medias.count }})</span>
+            <span><i class="bi bi-images"></i> Photos et vidéos terrain ({{ medias.count }})</span>
             </div>
             <div class="card-body">
                 {% for media in medias %}
                 <div class="d-flex align-items-center mb-1">
                     <i class="bi bi-file-earmark me-2"></i>
-                    <a href="{{ media.fichier.url }}" target="_blank">{{ media.nom_original }}</a>
+                    <a href="{% url 'panne_media_telecharger' media.pk %}">{{ media.nom_original }}</a>
                     <small class="text-muted ms-2">— {{ media.ajoute_par.username }}, {{ media.cree_le|date:"d/m/Y H:i" }}</small>
                 </div>
                 {% empty %}
-                <p class="text-muted mb-0">Aucun fichier joint.</p>
+                <p class="text-muted mb-0">Aucune photo ou vidéo terrain.</p>
                 {% endfor %}
                 <hr>
                 <form method="post" action="{% url 'panne_ajouter_media' panne.pk %}" enctype="multipart/form-data">
                     {% csrf_token %}
                     <div class="input-group">
-                        <input type="file" name="medias" multiple class="form-control" accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx,.mp4,.webm,.mov">
+                        <input type="file" name="medias" multiple class="form-control" accept="image/*,video/*,.mov">
                         <button type="submit" class="btn btn-outline-secondary">Ajouter</button>
                     </div>
                 </form>
             </div>
         </div>
 
-        {% if profile.role != 'silo' %}
+        {% if profile.is_admin %}
         <!-- Factures -->
         <div class="card mb-3">
-            <div class="card-header"><i class="bi bi-receipt"></i> Factures ({{ factures.count }})</div>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-receipt"></i> Factures administratives ({{ factures.count }})</span>
+                <strong>{{ total_factures_ht|floatformat:2 }} € HT</strong>
+            </div>
             <div class="card-body">
+                <div class="invoice-list">
                 {% for facture in factures %}
-                <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                <div class="invoice-list-item">
                     <div>
-                        <strong>{{ facture.numero }}</strong> — {{ facture.fournisseur }}<br>
-                        <small>HT : {{ facture.montant_ht }} € | TTC : {{ facture.montant_ttc }} €</small>
+                        <strong>{{ facture.numero }}</strong><span class="text-muted"> · {{ facture.fournisseur }}</span>
+                        <small class="d-block text-muted mt-1">
+                            {{ facture.date_facture|date:"d/m/Y"|default:"Date à compléter" }} ·
+                            HT : {{ facture.montant_ht|floatformat:2 }} € ·
+                            TTC : {{ facture.montant_ttc|floatformat:2 }} €
+                        </small>
                     </div>
-                    <span class="badge bg-{% if facture.validee %}success{% else %}warning text-dark{% endif %}">
-                        {% if facture.validee %}Validée{% else %}À valider{% endif %}
-                    </span>
+                    <div class="d-flex align-items-center gap-1">
+                        <span class="badge bg-{% if facture.validee %}success{% else %}warning text-dark{% endif %}">
+                            {% if facture.validee %}Validée{% else %}À valider{% endif %}
+                        </span>
+                        {% if facture.fichier %}
+                        <a href="{% url 'facture_telecharger' facture.pk %}" class="btn btn-sm btn-outline-secondary" title="Télécharger">
+                            <i class="bi bi-download"></i>
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'panne_modifier_facture' panne.pk facture.pk %}" class="btn btn-sm btn-outline-primary" title="Modifier">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                            {% if not facture.validee %}
+                            <form method="post" action="{% url 'panne_valider_facture' panne.pk facture.pk %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-success" title="Valider">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                            <form method="post" action="{% url 'panne_supprimer_facture' panne.pk facture.pk %}" onsubmit="return confirm('Supprimer cette facture ?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                    </div>
                 </div>
                 {% empty %}
-                <p class="text-muted mb-0">Aucune facture.</p>
+                <div class="invoice-empty"><i class="bi bi-receipt"></i><span>Aucune facture enregistrée</span></div>
                 {% endfor %}
-                <hr>
-                <form method="post" action="{% url 'panne_ajouter_facture' panne.pk %}" enctype="multipart/form-data">
+                </div>
+
+                <form method="post" action="{% url 'panne_ajouter_factures' panne.pk %}" enctype="multipart/form-data" class="invoice-quick-import">
                     {% csrf_token %}
-                    <div class="row g-2">
-                        <div class="col-sm-6"><input type="text" name="numero" class="form-control" placeholder="N° facture" required></div>
-                        <div class="col-sm-6"><input type="text" name="fournisseur" class="form-control" placeholder="Fournisseur" required></div>
-                        <div class="col-sm-4"><input type="number" step="0.01" name="montant_ht" class="form-control" placeholder="Montant HT" required></div>
-                        <div class="col-sm-4"><input type="number" step="0.01" name="montant_ttc" class="form-control" placeholder="Montant TTC" required></div>
-                        <div class="col-sm-4"><input type="file" name="fichier_upload" class="form-control"></div>
-                        <div class="col-12"><button type="submit" class="btn btn-outline-primary w-100">Ajouter la facture</button></div>
+                    <div class="invoice-quick-import-heading">
+                        <i class="bi bi-stars"></i>
+                        <div><strong>Import automatique</strong><span>Ajoutez vos photos ou PDF, les informations seront détectées.</span></div>
+                    </div>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-5">
+                            <label class="form-label" for="facture-photos">Photos</label>
+                            <input id="facture-photos" type="file" name="photos" multiple class="form-control" accept=".jpg,.jpeg,.png,.webp">
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label" for="facture-pdfs">Documents PDF</label>
+                            <input id="facture-pdfs" type="file" name="pdfs" multiple class="form-control" accept=".pdf">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-upload me-1"></i>Importer</button>
+                        </div>
                     </div>
                 </form>
+
+                <details class="invoice-manual-entry">
+                    <summary><i class="bi bi-pencil-square me-1"></i>Saisir une facture manuellement</summary>
+                    <form method="post" action="{% url 'panne_ajouter_facture' panne.pk %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="row g-2 mt-1">
+                            <div class="col-sm-6"><label class="visually-hidden" for="facture-numero">Numéro de facture</label><input id="facture-numero" type="text" name="numero" class="form-control" placeholder="N° facture" required></div>
+                            <div class="col-sm-6"><label class="visually-hidden" for="facture-fournisseur">Fournisseur</label><input id="facture-fournisseur" type="text" name="fournisseur" class="form-control" placeholder="Fournisseur" required></div>
+                            <div class="col-sm-4"><label class="visually-hidden" for="facture-montant-ht">Montant HT</label><input id="facture-montant-ht" type="number" step="0.01" name="montant_ht" class="form-control" placeholder="Montant HT" required></div>
+                            <div class="col-sm-4"><label class="visually-hidden" for="facture-montant-ttc">Montant TTC</label><input id="facture-montant-ttc" type="number" step="0.01" name="montant_ttc" class="form-control" placeholder="Montant TTC" required></div>
+                            <div class="col-sm-4"><label class="visually-hidden" for="facture-fichier">Fichier</label><input id="facture-fichier" type="file" name="fichier_upload" class="form-control"></div>
+                            <div class="col-12 d-flex justify-content-end"><button type="submit" class="btn btn-outline-primary"><i class="bi bi-plus-lg me-1"></i>Ajouter la facture</button></div>
+                        </div>
+                    </form>
+                </details>
             </div>
         </div>
         {% endif %}
@@ -127,18 +363,14 @@
                     <div class="mb-3">
                         <label class="form-label">Nouveau statut</label>
                         <select name="nouveau_statut" class="form-select" required>
-                            {% for statut in transitions_autorisees %}
-                            <option value="{{ statut }}">{{ statut }}</option>
+                            {% for valeur, libelle in transitions_autorisees %}
+                            <option value="{{ valeur }}">{{ libelle }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Commentaire</label>
                         <textarea name="commentaire" class="form-control" rows="3"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Fichiers joints</label>
-                        <input type="file" name="medias" multiple class="form-control">
                     </div>
                 </div>
                 <div class="modal-footer">

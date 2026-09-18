@@ -1,27 +1,21 @@
 {% extends "base.html" %}
 {% block title %}Affecter la panne{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header"><h5>Affecter « {{ panne.titre }} »</h5></div>
+<header class="page-heading"><div><p class="eyebrow mb-1">Affectation</p><h1 class="page-title">Affecter la panne</h1><p class="page-subtitle">{{ panne.titre }} · {{ panne.site.nom }}</p></div></header>
+<div class="form-card">
+        <form method="post" class="card app-form" novalidate>
+            <div class="card-header"><i class="bi bi-person-check me-2 text-primary"></i>Agent responsable</div>
             <div class="card-body">
-                <form method="post">
                     {% csrf_token %}
                     {% for field in form %}
                     <div class="mb-3">
-                        <label class="form-label">{{ field.label }}</label>
+                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
                         {{ field }}
-                        {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+                        {% if field.errors %}<div class="invalid-feedback d-block">{{ field.errors|striptags }}</div>{% endif %}
                     </div>
                     {% endfor %}
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">Affecter</button>
-                        <a href="{% url 'panne_detail' panne.pk %}" class="btn btn-secondary">Annuler</a>
-                    </div>
-                </form>
             </div>
-        </div>
-    </div>
+            <div class="card-footer form-actions"><a href="{% url 'panne_detail' panne.pk %}" class="btn btn-outline-secondary">Annuler</a><button type="submit" class="btn btn-primary"><i class="bi bi-person-check me-1"></i>Affecter</button></div>
+        </form>
 </div>
 {% endblock %}

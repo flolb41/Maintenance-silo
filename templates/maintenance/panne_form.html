@@ -1,29 +1,88 @@
 {% extends "base.html" %}
-{% block title %}Déclarer une panne{% endblock %}
+{% block title %}{% if form.instance.pk %}Modifier la panne{% else %}Déclarer une panne{% endif %}{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-8">
-        <div class="card">
-            <div class="card-header"><h5 class="mb-0"><i class="bi bi-plus-lg"></i> Déclarer une panne</h5></div>
-            <div class="card-body">
-                <form method="post" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    {% for field in form %}
-                    <div class="mb-3">
-                        <label class="form-label">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
-                        {{ field }}
-                        {% if field.errors %}
-                        <div class="text-danger small">{{ field.errors }}</div>
-                        {% endif %}
+<header class="page-heading panne-form-heading">
+    <div>
+        <p class="eyebrow mb-1">{% if form.instance.pk %}Panne nouvelle{% else %}Nouvelle demande{% endif %}</p>
+        <h1 class="page-title">{% if form.instance.pk %}Modifier la panne{% else %}Déclarer une panne{% endif %}</h1>
+        <p class="page-subtitle">{% if form.instance.pk %}Corrigez les informations avant la prise en charge de la panne.{% else %}Renseignez les éléments utiles pour permettre une prise en charge rapide.{% endif %}</p>
+    </div>
+</header>
+
+<form method="post" enctype="multipart/form-data" class="panne-declaration-form" data-offline-queue novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="row g-4 align-items-start">
+        <div class="col-xl-8">
+            <section class="card panne-form-section">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="bi bi-exclamation-diamond text-danger"></i>
+                    <span>Informations sur la panne</span>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ form.site.id_for_label }}">Site <span class="text-danger">*</span></label>
+                            {{ form.site }}
+                            {% if form.site.errors %}<div class="invalid-feedback d-block">{{ form.site.errors|striptags }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ form.equipement.id_for_label }}">Équipement</label>
+                            {{ form.equipement }}
+                            {% if form.equipement.errors %}<div class="invalid-feedback d-block">{{ form.equipement.errors|striptags }}</div>{% endif %}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="{{ form.titre.id_for_label }}">Titre <span class="text-danger">*</span></label>
+                            {{ form.titre }}
+                            {% if form.titre.errors %}<div class="invalid-feedback d-block">{{ form.titre.errors|striptags }}</div>{% endif %}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="{{ form.description.id_for_label }}">Description <span class="text-danger">*</span></label>
+                            {{ form.description }}
+                            <div class="form-text">Précisez les symptômes, les bruits éventuels et les conséquences sur l'activité.</div>
+                            {% if form.description.errors %}<div class="invalid-feedback d-block">{{ form.description.errors|striptags }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ form.priorite.id_for_label }}">Priorité <span class="text-danger">*</span></label>
+                            {{ form.priorite }}
+                            {% if form.priorite.errors %}<div class="invalid-feedback d-block">{{ form.priorite.errors|striptags }}</div>{% endif %}
+                        </div>
                     </div>
-                    {% endfor %}
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-danger">Déclarer</button>
-                        <a href="{% url 'panne_liste' %}" class="btn btn-secondary">Annuler</a>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-xl-4">
+            <section class="card panne-form-section">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="bi bi-camera"></i>
+                    <span>Photos et vidéos terrain</span>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted mb-3">Ajoutez des vues nettes de l'équipement et, si nécessaire, une courte vidéo du défaut.</p>
+                    <div class="panne-upload-field mb-3">
+                        <label class="form-label" for="{{ form.photos.id_for_label }}"><i class="bi bi-image me-1"></i> Photos</label>
+                        {{ form.photos }}
+                        <div class="form-text">JPG, PNG, GIF ou WebP.</div>
+                        {% if form.photos.errors %}<div class="invalid-feedback d-block">{{ form.photos.errors|striptags }}</div>{% endif %}
                     </div>
-                </form>
-            </div>
+                    <div class="panne-upload-field">
+                        <label class="form-label" for="{{ form.videos.id_for_label }}"><i class="bi bi-camera-video me-1"></i> Vidéos</label>
+                        {{ form.videos }}
+                        <div class="form-text">MP4, WebM ou MOV.</div>
+                        {% if form.videos.errors %}<div class="invalid-feedback d-block">{{ form.videos.errors|striptags }}</div>{% endif %}
+                    </div>
+                </div>
+            </section>
         </div>
     </div>
-</div>
+
+    <div class="panne-form-actions">
+        <a href="{% url 'panne_liste' %}" class="btn btn-outline-secondary">Annuler</a>
+        <button type="submit" class="btn btn-danger"><i class="bi bi-{% if form.instance.pk %}check-lg{% else %}send{% endif %} me-1"></i> {% if form.instance.pk %}Enregistrer les modifications{% else %}Déclarer la panne{% endif %}</button>
+    </div>
+</form>
 {% endblock %}

@@ -1,22 +1,31 @@
 {% extends "base.html" %}
 {% block title %}Tâches préventives{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2><i class="bi bi-calendar-check"></i> Maintenances préventives</h2>
-    {% if profile.role != 'silo' %}
-    <a href="{% url 'preventive_creer' %}" class="btn btn-success"><i class="bi bi-plus-lg"></i> Nouvelle tâche</a>
+<header class="page-heading">
+    <div><p class="eyebrow mb-1">Planification</p><h1 class="page-title">Maintenances préventives</h1><p class="page-subtitle">Planifiez les interventions et suivez leur avancement.</p></div>
+    {% if profile.is_admin %}
+    <div class="action-group"><a href="{% url 'preventive_calendrier' %}" class="btn btn-outline-primary"><i class="bi bi-calendar3 me-1"></i>Calendrier</a><a href="{% url 'preventive_creer' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouvelle tâche</a></div>
     {% endif %}
-</div>
+</header>
 
-<div class="card">
+<form method="get" class="toolbar mb-3">
+    <div class="flex-grow-1"><label class="form-label" for="preventive-q">Recherche</label><input id="preventive-q" class="form-control" type="search" name="q" value="{{ current_q }}" placeholder="Titre ou description"></div>
+    <div><label class="form-label" for="preventive-statut">Statut</label><select id="preventive-statut" class="form-select" name="statut"><option value="">Tous</option>{% for value, label in statuts %}<option value="{{ value }}" {% if current_statut == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div><label class="form-label" for="preventive-periodicite">Périodicité</label><select id="preventive-periodicite" class="form-select" name="periodicite"><option value="">Toutes</option>{% for value, label in periodicites %}<option value="{{ value }}" {% if current_periodicite == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div><label class="form-label" for="preventive-site">Site</label><select id="preventive-site" class="form-select" name="site"><option value="">Tous</option>{% for site in sites %}<option value="{{ site.pk }}" {% if current_site == site.pk|stringformat:'s' %}selected{% endif %}>{{ site.nom }}</option>{% endfor %}</select></div>
+    <div class="action-group"><button class="btn btn-primary" type="submit"><i class="bi bi-funnel me-1"></i>Filtrer</button><a class="btn btn-outline-secondary" href="{% url 'preventive_liste' %}" title="Réinitialiser"><i class="bi bi-arrow-counterclockwise"></i></a></div>
+</form>
+
+<div class="table-shell">
     <div class="table-responsive">
         <table class="table table-hover mb-0">
-            <thead class="table-dark">
+            <thead>
                 <tr>
                     <th>Titre</th>
                     <th>Site</th>
                     <th>Statut</th>
-                    {% if profile.role != 'silo' %}<th>Destinataire</th>{% endif %}
+                    <th>Périodicité</th>
+                    {% if profile.is_admin %}<th>Destinataire</th>{% endif %}
                     {% if profile.role == 'silo' %}<th>Créateur</th>{% endif %}
                     <th>Échéance</th>
                     <th></th>
@@ -24,24 +33,30 @@
             </thead>
             <tbody>
                 {% for p in preventives %}
-                <tr class="{% if p.statut == 'en_retard' %}table-danger{% elif p.statut == 'a_valider' %}table-warning{% endif %}">
-                    <td>{{ p.titre|truncatechars:50 }}</td>
+                <tr>
+                    <td><a class="fw-semibold text-decoration-none" href="{% url 'preventive_detail' p.pk %}">{{ p.titre|truncatechars:50 }}</a></td>
                     <td>{{ p.site.nom }}</td>
                     <td>
-                        <span class="badge bg-{% if p.statut == 'en_retard' %}danger{% elif p.statut == 'validee' %}success{% elif p.statut == 'a_valider' %}warning text-dark{% else %}secondary{% endif %}">
+                        <span class="badge status-{% if p.statut == 'en_retard' %}danger{% elif p.statut == 'validee' %}success{% elif p.statut == 'a_valider' %}warning{% elif p.statut == 'en_cours' %}info{% else %}neutral{% endif %}">
                             {{ p.get_statut_display }}
                         </span>
                     </td>
-                    {% if profile.role != 'silo' %}<td>{{ p.destinataire.get_full_name|default:p.destinataire.username }}</td>{% endif %}
+                    <td>
+                        {% if p.periodicite != 'ponctuelle' %}
+                        <span class="badge text-bg-light border"><i class="bi bi-arrow-repeat me-1"></i>{{ p.get_periodicite_display }}</span>
+                        {% else %}—{% endif %}
+                    </td>
+                    {% if profile.is_admin %}<td>{{ p.destinataire.get_full_name|default:p.destinataire.username }}</td>{% endif %}
                     {% if profile.role == 'silo' %}<td>{{ p.createur.get_full_name|default:p.createur.username }}</td>{% endif %}
                     <td>{{ p.echeance|date:"d/m/Y H:i" }}</td>
-                    <td><a href="{% url 'preventive_detail' p.pk %}" class="btn btn-sm btn-outline-primary">Détail</a></td>
+                    <td class="text-end"><a href="{% url 'preventive_detail' p.pk %}" class="btn btn-sm btn-outline-primary" title="Ouvrir"><i class="bi bi-arrow-right"></i></a></td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="7" class="text-center text-muted py-4">Aucune tâche préventive.</td></tr>
+                <tr><td colspan="8"><div class="empty-state"><i class="bi bi-search"></i>Aucune tâche ne correspond aux critères.</div></td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
+{% if is_paginated %}<nav class="d-flex justify-content-between align-items-center mt-3" aria-label="Pagination"><span class="text-secondary small">Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span><div class="btn-group">{% if page_obj.has_previous %}<a class="btn btn-outline-secondary" href="?{% if filter_query %}{{ filter_query }}&{% endif %}page={{ page_obj.previous_page_number }}"><i class="bi bi-chevron-left"></i></a>{% endif %}{% if page_obj.has_next %}<a class="btn btn-outline-secondary" href="?{% if filter_query %}{{ filter_query }}&{% endif %}page={{ page_obj.next_page_number }}"><i class="bi bi-chevron-right"></i></a>{% endif %}</div></nav>{% endif %}
 {% endblock %}

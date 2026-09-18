@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Importer une facture PDF{% endblock %}
+{% block content %}
+<header class="page-heading"><div><p class="eyebrow mb-1">Détection automatique</p><h1 class="page-title">Importer des factures</h1><p class="page-subtitle">{{ panne.titre }} · {{ panne.site.nom }}</p></div></header>
+<div class="form-card">
+    <form method="post" enctype="multipart/form-data" class="card app-form" novalidate>
+        {% csrf_token %}
+        <div class="card-header"><i class="bi bi-stars me-2 text-primary"></i>Documents à analyser</div>
+        <div class="card-body">
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+            {% endif %}
+            <div class="mb-3">
+                <label class="form-label" for="{{ form.fichier.id_for_label }}">Fichier(s) de facture</label>
+                {{ form.fichier }}
+                {% if form.fichier.errors %}<div class="invalid-feedback d-block">{{ form.fichier.errors|striptags }}</div>{% endif %}
+                <div class="form-text">PDF, images, Word ou Excel. Chaque document sera analysé puis rattaché à cette panne.</div>
+            </div>
+        </div>
+        <div class="card-footer form-actions">
+            <a href="{% url 'panne_detail' panne.pk %}" class="btn btn-outline-secondary">Annuler</a>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-stars me-1"></i>Importer et analyser</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

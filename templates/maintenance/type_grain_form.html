@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{% if object %}Modifier le grain{% else %}Nouveau type de grain{% endif %}{% endblock %}
+{% block content %}
+<header class="page-heading">
+    <div><p class="eyebrow mb-1">Référentiel</p><h1 class="page-title">{% if object %}Modifier le grain{% else %}Nouveau type de grain{% endif %}</h1><p class="page-subtitle">Le poids spécifique moyen sert à convertir le tonnage estimé en volume occupé.</p></div>
+</header>
+<form method="post" class="card form-card app-form" novalidate>
+    {% csrf_token %}
+    <div class="card-header"><i class="bi bi-moisture me-2 text-primary"></i>Caractéristiques du grain</div>
+    <div class="card-body">
+        {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+        <div class="row g-3">{% for field in form %}<div class="col-md-6"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>{{ field }}{% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}{% if field.errors %}<div class="invalid-feedback d-block">{{ field.errors|striptags }}</div>{% endif %}</div>{% endfor %}</div>
+    </div>
+    <div class="card-footer form-actions"><a class="btn btn-outline-secondary" href="{% url 'gestion_silos' %}">Annuler</a><button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>Enregistrer</button></div>
+</form>
+{% endblock %}

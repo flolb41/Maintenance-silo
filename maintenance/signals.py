@@ -17,7 +17,8 @@ from .models import Facture, MaintenancePreventive, Notification, Panne, PanneMe
 def panne_pre_save(sender, instance, **kwargs):
     if instance.pk:
         try:
-            instance._ancien_statut = Panne.objects.values_list("statut", flat=True).get(pk=instance.pk)
+            instance._ancien_statut = Panne.objects.values_list(
+                "statut", flat=True).get(pk=instance.pk)
         except Panne.DoesNotExist:
             instance._ancien_statut = None
     else:
@@ -92,11 +93,11 @@ def preventive_pre_save(sender, instance, **kwargs):
 def preventive_post_save(sender, instance, created, **kwargs):
     from .services import notifier
 
-    if created:
+    if created and instance.statut != MaintenancePreventive.Statut.ENVOYEE:
         return
 
     ancien = getattr(instance, "_ancien_statut", None)
-    if ancien is None or ancien == instance.statut:
+    if not created and (ancien is None or ancien == instance.statut):
         return
 
     S = MaintenancePreventive.Statut
@@ -144,7 +145,8 @@ def preventive_post_save(sender, instance, created, **kwargs):
     entry = mapping.get(instance.statut)
     if entry:
         utilisateur, type_notif, titre, message = entry
-        notifier(utilisateur, type_notif, titre, message, lien=f"/preventives/{instance.pk}/")
+        notifier(utilisateur, type_notif, titre, message,
+                 lien=f"/preventives/{instance.pk}/")
 
 
 # ---------------------------------------------------------------------------
@@ -221,4 +223,57 @@ def facture_post_save(sender, instance, created, **kwargs):
             f"Nouvelle facture – {panne.titre}",
             f"Facture {instance.numero} ({instance.montant_ttc} € TTC) ajoutée par {User.objects.filter(pannes_assignees=panne).first() or 'inconnu'}.",
             lien=f"/pannes/{panne.pk}/",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Compatibilité API historique utilisée par les vues
+# ---------------------------------------------------------------------------
+
+def supprimer_notifications_declaration_panne(panne):
+    """Supprime les notif de déclaration après affectation d’une panne."""
+    Notification.objects.filter(
+        utilisateur=panne.declarant,
+        type_notif__in=[
+            Notification.TypeNotif.PANNE_CREEE,
+            Notification.TypeNotif.PANNE_STATUT,
+        ],
+        lien=f"/pannes/{panne.pk}/",
+    ).delete()
+
+
+def notifier_affectation_panne(panne):
+    """Crée la notification d’affectation pour l’agent assigné."""
+    from .services import notifier
+
+    if not panne.agent_assigne:
+        return
+    notifier(
+        panne.agent_assigne,
+        Notification.TypeNotif.PANNE_AFFECTEE,
+        f"Panne affectée : {panne.titre}",
+        f"La panne « {panne.titre} » vous a été affectée sur {panne.site.nom}.",
+        lien=f"/pannes/{panne.pk}/",
+    )
+
+
+def notifier_admin_preventive_en_attente(preventive, user, commentaire=""):
+    """Alerte les admins lorsqu’un agent silo signale un incident sur une tâche."""
+    from django.contrib.auth import get_user_model
+    from .services import notifier
+
+    User = get_user_model()
+    for admin in User.objects.filter(
+        sites_autorises=preventive.site,
+        profile__role="admin",
+    ).distinct():
+        notifier(
+            admin,
+            Notification.TypeNotif.PREVENTIVE_RETARD,
+            f"Tâche en attente – {preventive.titre}",
+            (
+                f"L’agent {user.get_full_name() or user.username} a signalé un problème sur la tâche "
+                f"« {preventive.titre} »{f' : {commentaire}' if commentaire else ''}."
+            ),
+            lien=f"/preventives/{preventive.pk}/",
         )

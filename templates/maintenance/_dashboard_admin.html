@@ -1,0 +1,277 @@
+{% load static %}
+<div class="executive-dashboard">
+    <header class="executive-heading">
+        <div class="dashboard-title-lockup">
+            <img class="dashboard-logo" src="{% static 'logo.jpg' %}" alt="Agri Négoce">
+            <div>
+                <p class="eyebrow mb-1">Centre de pilotage</p>
+                <h1>Gestion de silos Agri Négoce</h1>
+                <p>Situation consolidée des stocks, interventions prioritaires et disponibilité du parc.</p>
+            </div>
+        </div>
+        <div class="executive-actions">
+            <span class="dashboard-updated"><i class="bi bi-arrow-repeat"></i> Actualisé à {% now "H:i" %}</span>
+            <a class="btn btn-outline-secondary" href="{% url 'gestion_silos' %}"><i class="bi bi-box-seam me-1"></i>Gérer les stocks</a>
+            <a class="btn btn-primary" href="{% url 'panne_creer' %}"><i class="bi bi-plus-lg me-1"></i>Déclarer une panne</a>
+        </div>
+    </header>
+
+    <section class="executive-command-bar" aria-label="Priorités opérationnelles">
+        <div class="command-bar-intro">
+            <span class="command-bar-icon"><i class="bi bi-activity"></i></span>
+            <div><span>Priorités opérationnelles</span><strong>Vue consolidée de vos sites</strong></div>
+        </div>
+        <a class="command-bar-metric{% if pannes_a_affecter %} is-urgent{% endif %}" href="{% url 'panne_liste' %}?statut=nouvelle"><strong>{{ pannes_a_affecter }}</strong><span>panne{{ pannes_a_affecter|pluralize }} à affecter</span></a>
+        <a class="command-bar-metric{% if preventives_retard %} is-watch{% endif %}" href="{% url 'preventive_liste' %}?statut=en_retard"><strong>{{ preventives_retard }}</strong><span>préventive{{ preventives_retard|pluralize }} en retard</span></a>
+        <a class="command-bar-metric{% if cellules_sans_releve %} is-watch{% endif %}" href="{% url 'gestion_silos' %}"><strong>{{ cellules_sans_releve }}</strong><span>relevé{{ cellules_sans_releve|pluralize }} à compléter</span></a>
+        <div class="command-bar-metric"><strong>{{ maintenance_metrics.mttr_minutes }}</strong><span>minutes moyennes par intervention</span></div>
+    </section>
+
+    <section class="executive-kpis" aria-label="Situation globale">
+        <a class="executive-kpi kpi-stock" href="{% url 'gestion_silos' %}">
+            <span class="executive-kpi-icon"><i class="bi bi-database"></i></span>
+            <span class="executive-kpi-content">
+                <small>Stock physique total</small>
+                <strong>{{ stock_total_tonnes|floatformat:0 }} <em>t</em></strong>
+                <span>{{ taux_stock_global|floatformat:1 }} % de la capacité globale</span>
+            </span>
+            <i class="bi bi-chevron-right executive-kpi-arrow"></i>
+        </a>
+        <a class="executive-kpi kpi-incident{% if pannes_non_assignees %} metric-card-alerting is-alert{% endif %}" href="{% url 'panne_liste' %}?statut=nouvelle">
+            <span class="executive-kpi-icon"><i class="bi {% if pannes_non_assignees %}bi-bell-fill{% else %}bi-exclamation-diamond{% endif %}"></i></span>
+            <span class="executive-kpi-content">
+                <small>Pannes à affecter</small>
+                <strong>{{ pannes_a_affecter }}</strong>
+                <span>{{ pannes_critiques }} critique{{ pannes_critiques|pluralize }} · {{ pannes_en_traitement }} en traitement</span>
+            </span>
+            <i class="bi bi-chevron-right executive-kpi-arrow"></i>
+        </a>
+        <a class="executive-kpi kpi-fleet" href="{% url 'vehicules:liste' %}">
+            <span class="executive-kpi-icon"><i class="bi bi-truck"></i></span>
+            <span class="executive-kpi-content">
+                <small>Parc disponible</small>
+                <strong>{{ vehicules_disponibles }} <em>/ {{ vehicules_actifs }}</em></strong>
+                <span>{{ vehicules_indisponibles }} indisponible{{ vehicules_indisponibles|pluralize }}</span>
+            </span>
+            <i class="bi bi-chevron-right executive-kpi-arrow"></i>
+        </a>
+        <a class="executive-kpi kpi-watch" href="{% url 'preventive_liste' %}?statut=en_retard">
+            <span class="executive-kpi-icon"><i class="bi bi-shield-exclamation"></i></span>
+            <span class="executive-kpi-content">
+                <small>Points de vigilance</small>
+                <strong>{{ preventives_retard|add:vehicules_alertes_count|add:cellules_sans_releve }}</strong>
+                <span>{{ preventives_retard }} préventive{{ preventives_retard|pluralize }} · {{ vehicules_alertes_count }} véhicule{{ vehicules_alertes_count|pluralize }} · {{ cellules_sans_releve }} relevé{{ cellules_sans_releve|pluralize }}</span>
+            </span>
+            <i class="bi bi-chevron-right executive-kpi-arrow"></i>
+        </a>
+    </section>
+
+    <form method="get" class="analytics-filter-bar" aria-label="Filtres analytiques">
+        <div><label for="analytics-start">Du</label><input id="analytics-start" type="date" name="analytics_start" value="{{ analytics_filters.start }}"></div>
+        <div><label for="analytics-end">Au</label><input id="analytics-end" type="date" name="analytics_end" value="{{ analytics_filters.end }}"></div>
+        <div><label for="analytics-site">Site</label><select id="analytics-site" name="analytics_site"><option value="">Tous les sites</option>{% for site in sites %}<option value="{{ site.pk }}" {% if analytics_filters.site == site.pk|stringformat:'s' %}selected{% endif %}>{{ site.nom }}</option>{% endfor %}</select></div>
+        <div><label for="analytics-equipment">Équipement</label><select id="analytics-equipment" name="analytics_equipment"><option value="">Tous les équipements</option>{% for equipment in analytics_equipment %}<option value="{{ equipment.pk }}" {% if analytics_filters.equipment == equipment.pk|stringformat:'s' %}selected{% endif %}>{{ equipment.nom }} · {{ equipment.site.nom }}</option>{% endfor %}</select></div>
+        <button class="btn btn-primary" type="submit"><i class="bi bi-funnel me-1"></i>Analyser</button>
+        <a class="btn btn-outline-secondary" href="{% url 'dashboard' %}" title="Réinitialiser"><i class="bi bi-arrow-counterclockwise"></i></a>
+    </form>
+
+    <section class="admin-analytics-grid" aria-label="Évolution de l’activité">
+        <article class="executive-panel admin-analytics-card">
+            <div class="executive-panel-header"><div><p class="panel-kicker">Tendance</p><h2>Pannes signalées</h2></div><span class="chart-caption">6 mois</span></div>
+            <div class="admin-analytics-chart"><canvas id="dashboard-pannes-trend" aria-label="Évolution mensuelle des pannes signalées"></canvas></div>
+        </article>
+        <article class="executive-panel admin-analytics-card">
+            <div class="executive-panel-header"><div><p class="panel-kicker">Dépenses</p><h2>Factures TTC</h2></div><span class="chart-caption">6 mois</span></div>
+            <div class="admin-analytics-chart"><canvas id="dashboard-cost-trend" aria-label="Évolution mensuelle des montants de factures"></canvas></div>
+        </article>
+    </section>
+    <script type="application/json" id="dashboard-analytics-data">{{ dashboard_analytics|safe }}</script>
+    <section class="admin-analytics-grid" aria-label="Performance maintenance">
+        <article class="executive-panel admin-analytics-card">
+            <div class="executive-panel-header"><div><p class="panel-kicker">Performance</p><h2>Préventif réalisé à temps</h2></div><strong>{{ maintenance_metrics.preventive_rate }} %</strong></div>
+            <div class="admin-analytics-chart"><canvas id="dashboard-preventive-rate" aria-label="Taux de préventif réalisé à temps"></canvas></div>
+        </article>
+        <article class="executive-panel admin-analytics-card">
+            <div class="executive-panel-header"><div><p class="panel-kicker">Coûts</p><h2>Coût maintenance par site</h2></div><span class="chart-caption">TTC + main d’œuvre</span></div>
+            <div class="admin-analytics-chart"><canvas id="dashboard-site-costs" aria-label="Coûts de maintenance par site"></canvas></div>
+        </article>
+    </section>
+    <section class="admin-analytics-grid" aria-label="Fiabilité des équipements">
+        <article class="executive-panel admin-analytics-card">
+            <div class="executive-panel-header"><div><p class="panel-kicker">Fiabilité</p><h2>Intervalle moyen entre pannes</h2></div><span class="chart-caption">Jours · clôturées</span></div>
+            <div class="admin-analytics-chart"><canvas id="dashboard-equipment-mtbf" aria-label="Intervalle moyen entre pannes par équipement"></canvas></div>
+        </article>
+    </section>
+    <script type="application/json" id="dashboard-analytics-extended">{{ dashboard_analytics_extended|safe }}</script>
+
+    <nav class="executive-domain-tabs" aria-label="Domaines du tableau de bord">
+        <button class="active" data-dashboard-tab data-bs-toggle="tab" data-bs-target="#dashboard-overview" type="button" role="tab" aria-selected="true" aria-controls="dashboard-overview"><i class="bi bi-grid-1x2"></i>Vue générale</button>
+        <button data-dashboard-tab data-bs-toggle="tab" data-bs-target="#dashboard-maintenance" type="button" role="tab" aria-selected="false" aria-controls="dashboard-maintenance"><i class="bi bi-tools"></i>Maintenance</button>
+        <button data-dashboard-tab data-bs-toggle="tab" data-bs-target="#dashboard-gestion" type="button" role="tab" aria-selected="false" aria-controls="dashboard-gestion"><i class="bi bi-box-seam"></i>Gestion des stocks</button>
+        <button data-dashboard-tab data-bs-toggle="tab" data-bs-target="#dashboard-vehicules" type="button" role="tab" aria-selected="false" aria-controls="dashboard-vehicules"><i class="bi bi-truck"></i>Véhicules</button>
+    </nav>
+
+    <div class="tab-content executive-domain-content">
+    <div class="tab-pane fade" id="dashboard-gestion" role="tabpanel">
+    <div class="executive-main-grid dashboard-stock-grid">
+        <section class="executive-panel stock-command-panel">
+            <div class="executive-panel-header">
+                <div>
+                    <p class="panel-kicker">Stocks physiques</p>
+                    <h2>Répartition des matières</h2>
+                </div>
+                <ul class="nav stock-view-switch" role="tablist">
+                    <li><button class="active" data-bs-toggle="tab" data-bs-target="#stocks-grain" type="button" role="tab">Par grain</button></li>
+                    <li><button data-bs-toggle="tab" data-bs-target="#stocks-site" type="button" role="tab">Par site</button></li>
+                </ul>
+            </div>
+            <div class="stock-total-line">
+                <div><span>Stock déclaré</span><strong>{{ stock_total_tonnes|floatformat:1 }} t</strong></div>
+                <div><span>Capacité configurée</span><strong>{{ capacite_totale_tonnes|floatformat:1 }} t</strong></div>
+                <div><span>État des cellules</span><strong>{{ cellules_vides }} vide{{ cellules_vides|pluralize }} · {{ cellules_maintenance }} en maintenance</strong></div>
+            </div>
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="stocks-grain" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table executive-table mb-0">
+                            <thead><tr><th>Matière</th><th class="text-end">Stock</th><th class="text-end">Capacité</th><th>Occupation</th><th class="text-end">Couverture</th></tr></thead>
+                            <tbody>
+                            {% for ligne in stocks_par_grain %}
+                                <tr class="site-stock-row">
+                                    <td><button class="site-stock-toggle collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#grain-sites-{{ ligne.id }}" aria-expanded="false" aria-controls="grain-sites-{{ ligne.id }}"><span class="material-mark material-mark-{{ forloop.counter0 }}"></span><strong>{{ ligne.grain }}</strong><i class="bi bi-chevron-down" aria-hidden="true"></i><span class="visually-hidden">Afficher le tonnage par site</span></button></td>
+                                    <td class="text-end number-cell">{{ ligne.stock|floatformat:1 }} t{% if ligne.stock_a_plat %}<small class="d-block text-muted">dont {{ ligne.stock_a_plat|floatformat:1 }} t à plat</small>{% endif %}</td>
+                                    <td class="text-end muted-cell">{{ ligne.capacite|floatformat:1 }} t</td>
+                                    <td class="occupancy-cell"><div class="occupancy-label"><span>{{ ligne.taux|floatformat:1 }} %</span>{% if ligne.taux > 100 %}<span class="over-capacity"><i class="bi bi-exclamation-triangle-fill"></i> dépassement</span>{% endif %}</div><div class="stock-progress"><span class="{% if ligne.taux > 100 %}over{% endif %}" style="width:{% if ligne.taux > 100 %}100{% else %}{{ ligne.taux|stringformat:'f' }}{% endif %}%"></span></div></td>
+                                    <td class="text-end"><span class="coverage-pill{% if ligne.cellules_relevees < ligne.cellules %} incomplete{% endif %}">{{ ligne.cellules_relevees }}/{{ ligne.cellules }}</span></td>
+                                </tr>
+                                <tr class="collapse site-grain-detail-row" id="grain-sites-{{ ligne.id }}">
+                                    <td colspan="5">
+                                        <div class="site-grain-detail">
+                                            <div class="site-grain-detail-title">Tonnage par site · {{ ligne.grain }}</div>
+                                            {% for site in ligne.sites %}
+                                            <div class="site-grain-line">
+                                                <div><span class="site-avatar">{{ site.site|slice:":1" }}</span><strong>{{ site.site }}</strong></div>
+                                                <div><small>Stock</small><strong>{{ site.stock|floatformat:1 }} t</strong></div>
+                                                <div><small>Capacité</small><span>{{ site.capacite|floatformat:1 }} t</span></div>
+                                                <div><small>Occupation</small><span>{{ site.taux|floatformat:1 }} %</span><div class="stock-progress"><span class="{% if site.taux > 100 %}over{% endif %}" style="width:{% if site.taux > 100 %}100{% else %}{{ site.taux|stringformat:'f' }}{% endif %}%"></span></div></div>
+                                                <div><small>Couverture</small><span class="coverage-pill{% if site.cellules_relevees < site.cellules %} incomplete{% endif %}">{{ site.cellules_relevees }}/{{ site.cellules }}</span></div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}<tr><td colspan="5"><div class="executive-empty"><i class="bi bi-database"></i>Aucun stock configuré.</div></td></tr>{% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="stocks-site" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table executive-table mb-0">
+                            <thead><tr><th>Site</th><th class="text-end">Stock</th><th class="text-end">Capacité</th><th>Occupation</th><th class="text-end">Couverture</th></tr></thead>
+                            <tbody>
+                            {% for ligne in stocks_par_site %}
+                                <tr class="site-stock-row">
+                                    <td><button class="site-stock-toggle collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#site-grains-{{ ligne.id }}" aria-expanded="false" aria-controls="site-grains-{{ ligne.id }}"><span class="site-avatar">{{ ligne.site|slice:":1" }}</span><strong>{{ ligne.site }}</strong><i class="bi bi-chevron-down" aria-hidden="true"></i><span class="visually-hidden">Afficher le détail des grains</span></button></td>
+                                    <td class="text-end number-cell">{{ ligne.stock|floatformat:1 }} t{% if ligne.stock_a_plat %}<small class="d-block text-muted">dont {{ ligne.stock_a_plat|floatformat:1 }} t à plat</small>{% endif %}</td>
+                                    <td class="text-end muted-cell">{{ ligne.capacite|floatformat:1 }} t</td>
+                                    <td class="occupancy-cell"><div class="occupancy-label"><span>{{ ligne.taux|floatformat:1 }} %</span>{% if ligne.taux > 100 %}<span class="over-capacity"><i class="bi bi-exclamation-triangle-fill"></i> dépassement</span>{% endif %}</div><div class="stock-progress"><span class="{% if ligne.taux > 100 %}over{% endif %}" style="width:{% if ligne.taux > 100 %}100{% else %}{{ ligne.taux|stringformat:'f' }}{% endif %}%"></span></div></td>
+                                    <td class="text-end"><span class="coverage-pill{% if ligne.cellules_relevees < ligne.cellules %} incomplete{% endif %}">{{ ligne.cellules_relevees }}/{{ ligne.cellules }}</span></td>
+                                </tr>
+                                <tr class="collapse site-grain-detail-row" id="site-grains-{{ ligne.id }}">
+                                    <td colspan="5">
+                                        <div class="site-grain-detail">
+                                            <div class="site-grain-detail-title">Détail des grains · {{ ligne.site }}</div>
+                                            {% for grain in ligne.grains %}
+                                            <div class="site-grain-line">
+                                                <div><span class="material-mark material-mark-{{ forloop.counter0 }}"></span><strong>{{ grain.grain }}</strong></div>
+                                                <div><small>Stock</small><strong>{{ grain.stock|floatformat:1 }} t</strong></div>
+                                                <div><small>Capacité</small><span>{{ grain.capacite|floatformat:1 }} t</span></div>
+                                                <div><small>Occupation</small><span>{{ grain.taux|floatformat:1 }} %</span><div class="stock-progress"><span class="{% if grain.taux > 100 %}over{% endif %}" style="width:{% if grain.taux > 100 %}100{% else %}{{ grain.taux|stringformat:'f' }}{% endif %}%"></span></div></div>
+                                                <div><small>Couverture</small><span class="coverage-pill{% if grain.cellules_relevees < grain.cellules %} incomplete{% endif %}">{{ grain.cellules_relevees }}/{{ grain.cellules }}</span></div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}<tr><td colspan="5"><div class="executive-empty"><i class="bi bi-buildings"></i>Aucun site configuré.</div></td></tr>{% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+    </div>
+
+    <div class="tab-pane fade show active" id="dashboard-overview" role="tabpanel">
+    <section class="executive-panel site-overview-panel">
+        <div class="executive-panel-header">
+            <div><p class="panel-kicker">Vue territoriale</p><h2>Situation par site</h2></div>
+            <a class="panel-header-link" href="{% url 'site_list' %}">Gérer les sites <i class="bi bi-arrow-right"></i></a>
+        </div>
+        <div class="table-responsive">
+            <table class="table executive-table site-overview-table mb-0">
+                <thead><tr><th>Site</th><th>Stock physique</th><th>Cellules relevées</th><th>Pannes ouvertes</th><th>Parc disponible</th><th>Situation</th></tr></thead>
+                <tbody>
+                {% for ligne in stocks_par_site %}
+                <tr>
+                    <td><span class="site-avatar">{{ ligne.site|slice:":1" }}</span><strong>{{ ligne.site }}</strong></td>
+                    <td><strong>{{ ligne.stock|floatformat:1 }} t</strong><small>sur {{ ligne.capacite|floatformat:1 }} t</small></td>
+                    <td><strong>{{ ligne.cellules_relevees }} / {{ ligne.cellules }}</strong><small>{% if ligne.cellules_relevees < ligne.cellules %}Relevés incomplets{% else %}À jour{% endif %}</small></td>
+                    <td><strong>{{ ligne.pannes_ouvertes }}</strong><small>intervention{{ ligne.pannes_ouvertes|pluralize }}</small></td>
+                    <td><strong>{{ ligne.vehicules_disponibles }} / {{ ligne.vehicules_total }}</strong><small>véhicule{{ ligne.vehicules_total|pluralize }}</small></td>
+                    <td>{% if ligne.taux > 100 %}<span class="situation-badge warning"><i class="bi bi-exclamation-triangle"></i>Capacité dépassée</span>{% elif ligne.cellules_relevees < ligne.cellules %}<span class="situation-badge attention"><i class="bi bi-clock-history"></i>À compléter</span>{% elif ligne.pannes_ouvertes %}<span class="situation-badge attention"><i class="bi bi-tools"></i>À surveiller</span>{% else %}<span class="situation-badge healthy"><i class="bi bi-check2"></i>Maîtrisée</span>{% endif %}</td>
+                </tr>
+                {% empty %}<tr><td colspan="6"><div class="executive-empty">Aucun site à afficher.</div></td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    </div>
+
+    <div class="tab-pane fade" id="dashboard-vehicules" role="tabpanel">
+        <section class="executive-panel fleet-panel">
+            <div class="executive-panel-header"><div><p class="panel-kicker">Mobilité</p><h2>Parc automobile</h2></div><a class="panel-header-link" href="{% url 'vehicules:liste' %}">Voir le parc <i class="bi bi-arrow-right"></i></a></div>
+            <div class="fleet-status-grid">
+                <div class="fleet-status available"><strong>{{ vehicules_disponibles }}</strong><span>Disponibles</span></div>
+                <div class="fleet-status maintenance"><strong>{{ vehicules_entretien }}</strong><span>En entretien</span></div>
+                <div class="fleet-status unavailable"><strong>{{ vehicules_hors_service }}</strong><span>Hors service</span></div>
+                <div class="fleet-status deadline"><strong>{{ vehicules_alertes_count }}</strong><span>Échéances</span></div>
+            </div>
+            <div class="fleet-alerts">
+                {% for vehicule in vehicules_alertes %}<a href="{% url 'vehicules:detail' vehicule.pk %}"><span class="fleet-alert-icon"><i class="bi bi-calendar2-exclamation"></i></span><span><strong>{{ vehicule.immatriculation }}</strong><small>{{ vehicule.marque }} {{ vehicule.modele }} · {{ vehicule.site.nom }}</small></span><i class="bi bi-chevron-right ms-auto"></i></a>{% empty %}<div class="executive-empty compact"><i class="bi bi-shield-check"></i>Aucune échéance à moins de 30 jours.</div>{% endfor %}
+            </div>
+        </section>
+    </div>
+
+    <div class="tab-pane fade" id="dashboard-maintenance" role="tabpanel">
+    <div class="executive-main-grid dashboard-maintenance-grid">
+        <aside class="executive-panel priority-panel">
+            <div class="executive-panel-header">
+                <div><p class="panel-kicker panel-kicker-danger">Action immédiate</p><h2>Pannes à affecter</h2></div>
+                <span class="priority-count">{{ pannes_a_affecter }}</span>
+            </div>
+            <div class="priority-list">
+                {% for panne in pannes_a_affecter_recentes %}
+                <a href="{% url 'panne_detail' panne.pk %}" class="priority-item">
+                    <span class="priority-level priority-{{ panne.priorite }}"></span>
+                    <span class="priority-copy"><strong>{{ panne.titre|truncatechars:52 }}</strong><small><i class="bi bi-building"></i>{{ panne.site.nom }}{% if panne.equipement %} · {{ panne.equipement.nom }}{% endif %}</small><small><i class="bi bi-clock"></i>{{ panne.date_signalement|timesince }} · Non affectée</small></span>
+                    <span class="priority-name priority-name-{{ panne.priorite }}">{{ panne.get_priorite_display }}</span>
+                </a>
+                {% empty %}<div class="executive-empty priority-empty"><i class="bi bi-check2-circle"></i><strong>Situation maîtrisée</strong><span>Toutes les nouvelles pannes sont affectées.</span></div>{% endfor %}
+            </div>
+            <a class="panel-footer-link" href="{% url 'panne_liste' %}?statut=nouvelle">Ouvrir la file d'affectation <i class="bi bi-arrow-right"></i></a>
+        </aside>
+        <section class="executive-panel activity-panel">
+            <div class="executive-panel-header"><div><p class="panel-kicker">Maintenance</p><h2>Activité récente</h2></div><a class="panel-header-link" href="{% url 'preventive_liste' %}">Tout afficher <i class="bi bi-arrow-right"></i></a></div>
+            <div class="activity-list">
+                {% for panne in pannes_recentes %}{% if panne.affecte_a %}<a href="{% url 'panne_detail' panne.pk %}"><span class="activity-icon incident"><i class="bi bi-tools"></i></span><span><strong>{{ panne.titre|truncatechars:46 }}</strong><small>{{ panne.site.nom }} · {{ panne.affecte_a.get_full_name|default:panne.affecte_a.username }}</small></span><span class="activity-status">{{ panne.get_statut_display }}</span></a>{% endif %}{% endfor %}
+                {% for p in preventives_recentes %}<a href="{% url 'preventive_detail' p.pk %}"><span class="activity-icon preventive"><i class="bi bi-calendar2-check"></i></span><span><strong>{{ p.titre|truncatechars:46 }}</strong><small>{{ p.site.nom }} · Échéance {{ p.date_echeance|date:"d/m/Y" }} · {% if p.affecte_a %}{{ p.affecte_a.get_full_name|default:p.affecte_a.username }}{% else %}Non affectée{% endif %}</small></span><span class="activity-status">{{ p.get_statut_display }}</span></a>{% empty %}{% if not pannes_recentes %}<div class="executive-empty compact">Aucune activité récente.</div>{% endif %}{% endfor %}
+            </div>
+        </section>
+    </div>
+    </div>
+    </div>
+</div>

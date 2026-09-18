@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ stockage.nom }}{% endblock %}
+{% block content %}
+<header class="page-heading">
+    <div><p class="eyebrow mb-1">{{ stockage.site.nom }} · Stockage à plat</p><h1 class="page-title">{{ stockage.nom }}</h1><p class="page-subtitle">{{ stockage.type_grain.nom }} · Historique des tonnages saisis manuellement.</p></div>
+    <div class="action-group"><a class="btn btn-outline-secondary" href="{% url 'gestion_silos' %}"><i class="bi bi-arrow-left me-1"></i>Retour</a>{% if profile.is_silo and stockage.actif %}<a class="btn btn-primary" href="{% url 'stockage_a_plat_relever' stockage.pk %}"><i class="bi bi-box-arrow-in-down me-1"></i>Nouveau tonnage</a>{% endif %}</div>
+</header>
+<div class="table-shell"><div class="table-responsive"><table class="table table-hover"><thead><tr><th>Date</th><th>Grain</th><th>Tonnage</th><th>Saisi par</th><th>Commentaire</th></tr></thead><tbody>{% for releve in stockage.releves.all %}<tr><td class="text-nowrap">{{ releve.releve_le|date:"d/m/Y H:i" }}</td><td>{{ releve.type_grain.nom }}</td><td class="fw-semibold">{{ releve.tonnage|floatformat:2 }} t</td><td>{{ releve.releve_par.get_full_name|default:releve.releve_par.username }}</td><td>{{ releve.commentaire|default:"—" }}</td></tr>{% empty %}<tr><td colspan="5"><div class="empty-state"><i class="bi bi-box-seam"></i>Aucun tonnage enregistré.</div></td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}

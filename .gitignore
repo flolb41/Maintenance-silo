@@ -17,6 +17,7 @@ env/
 db.sqlite3
 staticfiles/
 media/
+private_invoices/
 .env
 
 # Tests
@@ -33,9 +34,6 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
-
-# Docker
-.dockerignore
 
 # Build
 dist/

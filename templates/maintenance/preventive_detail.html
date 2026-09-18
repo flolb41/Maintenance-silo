@@ -1,15 +1,14 @@
 {% extends "base.html" %}
 {% block title %}{{ preventive.titre }}{% endblock %}
 {% block content %}
-<div class="row">
-    <div class="col-lg-8">
+<header class="page-heading">
+    <div><p class="eyebrow mb-1">Maintenance préventive</p><h1 class="page-title">{{ preventive.titre }}</h1><p class="page-subtitle">{{ preventive.site.nom }}{% if preventive.equipement %} · {{ preventive.equipement }}{% endif %}</p></div>
+    <div class="action-group"><span class="badge status-{% if preventive.statut == 'en_retard' %}danger{% elif preventive.statut == 'validee' %}success{% elif preventive.statut == 'a_valider' %}warning{% else %}neutral{% endif %} fs-6">{{ preventive.get_statut_display }}</span></div>
+</header>
+<div class="row g-3">
+    <div class="col-xl-8">
         <div class="card mb-3">
-            <div class="card-header d-flex justify-content-between">
-                <h5 class="mb-0"><i class="bi bi-calendar-check"></i> {{ preventive.titre }}</h5>
-                <span class="badge bg-{% if preventive.statut == 'en_retard' %}danger{% elif preventive.statut == 'validee' %}success{% elif preventive.statut == 'a_valider' %}warning text-dark{% else %}secondary{% endif %} fs-6">
-                    {{ preventive.get_statut_display }}
-                </span>
-            </div>
+            <div class="card-header"><i class="bi bi-calendar-check me-2 text-primary"></i>Informations de la tâche</div>
             <div class="card-body">
                 <dl class="row">
                     <dt class="col-sm-3">Site</dt><dd class="col-sm-9">{{ preventive.site.nom }}</dd>
@@ -17,6 +16,11 @@
                     <dt class="col-sm-3">Créateur</dt><dd class="col-sm-9">{{ preventive.createur.get_full_name|default:preventive.createur.username }}</dd>
                     <dt class="col-sm-3">Destinataire</dt><dd class="col-sm-9">{{ preventive.destinataire.get_full_name|default:preventive.destinataire.username }}</dd>
                     <dt class="col-sm-3">Échéance</dt><dd class="col-sm-9">{{ preventive.echeance|date:"d/m/Y H:i" }}</dd>
+                    <dt class="col-sm-3">Périodicité</dt><dd class="col-sm-9">
+                        {{ preventive.get_periodicite_display }}
+                        {% if preventive.serie_parent_id %}<span class="badge text-bg-light border ms-1">Occurrence automatique</span>{% elif preventive.periodicite != 'ponctuelle' %}<span class="badge {% if preventive.recurrence_active %}text-bg-success{% else %}text-bg-secondary{% endif %} ms-1">{% if preventive.recurrence_active %}Active{% else %}Suspendue{% endif %}</span>{% endif %}
+                    </dd>
+                    {% if preventive.recurrence_jusquau %}<dt class="col-sm-3">Fin de récurrence</dt><dd class="col-sm-9">{{ preventive.recurrence_jusquau|date:"d/m/Y" }}</dd>{% endif %}
                     <dt class="col-sm-3">Instructions</dt><dd class="col-sm-9">{{ preventive.instructions|linebreaks }}</dd>
                     {% if preventive.retour %}
                     <dt class="col-sm-3">Compte rendu</dt><dd class="col-sm-9">{{ preventive.retour|linebreaks }}</dd>
@@ -28,49 +32,57 @@
             </div>
         </div>
 
-        <!-- Actions agent maintenance -->
-        {% if profile.role != 'silo' %}
+    </div>
+    <div class="col-xl-4">
+        {% if can_manage_preventive or can_validate_preventive or can_complete_preventive %}
         <div class="card mb-3">
-            <div class="card-header">Actions</div>
-            <div class="card-body d-flex gap-2 flex-wrap">
+            <div class="card-header"><i class="bi bi-sliders me-2 text-primary"></i>Pilotage</div>
+            <div class="card-body action-stack">
+            {% if can_manage_preventive %}
+                <a href="{% url 'preventive_update' preventive.pk %}" class="btn btn-outline-primary"><i class="bi bi-pencil me-1"></i>Modifier</a>
                 {% if preventive.statut == 'brouillon' or preventive.statut == 'rejetee' %}
-                {% if preventive.createur == request.user or profile.role == 'admin' %}
-                <form method="post" action="{% url 'preventive_envoyer' preventive.pk %}">{% csrf_token %}<button type="submit" class="btn btn-success">Envoyer à l'agent silo</button></form>
+                <form method="post" action="{% url 'preventive_envoyer' preventive.pk %}">{% csrf_token %}<button type="submit" class="btn btn-primary"><i class="bi bi-send me-1"></i>Envoyer à l'agent silo</button></form>
                 {% endif %}
-                {% endif %}
-                {% if preventive.statut == 'a_valider' %}
-                <a href="{% url 'preventive_valider' preventive.pk %}" class="btn btn-primary">Valider / Rejeter</a>
-                {% endif %}
+            {% endif %}
+            {% if can_validate_preventive and preventive.statut == 'a_valider' %}
+                <a href="{% url 'preventive_valider' preventive.pk %}" class="btn btn-primary"><i class="bi bi-shield-check me-1"></i>Valider / Rejeter</a>
+            {% endif %}
+            {% if can_complete_preventive %}
+                <form method="post" action="{% url 'preventive_changer_statut' preventive.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="nouveau_statut" value="effectuee">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i>Marquer comme terminée</button>
+                </form>
+            {% endif %}
             </div>
         </div>
         {% endif %}
 
-        <!-- Actions agent silo -->
-        {% if profile.role == 'silo' and preventive.destinataire == request.user %}
+        {% if can_execute_preventive %}
         <div class="card mb-3">
-            <div class="card-header">Mes actions</div>
-            <div class="card-body d-flex gap-2 flex-wrap">
+            <div class="card-header"><i class="bi bi-person-check me-2 text-primary"></i>Mes actions</div>
+            <div class="card-body action-stack">
                 {% if preventive.statut == 'envoyee' %}
-                <form method="post" action="{% url 'preventive_recevoir' preventive.pk %}">{% csrf_token %}<button type="submit" class="btn btn-info">Marquer comme reçue</button></form>
+                <form method="post" action="{% url 'preventive_recevoir' preventive.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-primary">Marquer comme reçue</button></form>
                 {% endif %}
                 {% if preventive.statut == 'recue' %}
                 <form method="post" action="{% url 'preventive_demarrer' preventive.pk %}">{% csrf_token %}<button type="submit" class="btn btn-primary">Démarrer</button></form>
                 {% endif %}
                 {% if preventive.statut == 'en_cours' %}
-                <a href="{% url 'preventive_terminer' preventive.pk %}" class="btn btn-success">Terminer (compte rendu)</a>
+                <a href="{% url 'preventive_terminer' preventive.pk %}" class="btn btn-primary"><i class="bi bi-clipboard2-check me-1"></i>Terminer (compte rendu)</a>
                 {% endif %}
             </div>
         </div>
         {% endif %}
 
-        <!-- Médias -->
+        {% if show_preventive_files %}
         <div class="card mb-3">
-            <div class="card-header"><i class="bi bi-paperclip"></i> Fichiers joints ({{ medias.count }})</div>
+            <div class="card-header"><i class="bi bi-paperclip me-2 text-primary"></i>Fichiers joints ({{ medias.count }})</div>
             <div class="card-body">
                 {% for media in medias %}
                 <div class="d-flex align-items-center mb-1">
                     <i class="bi bi-file-earmark me-2"></i>
-                    <a href="{{ media.fichier.url }}" target="_blank">{{ media.nom_original }}</a>
+                    <a href="{% url 'preventive_media_telecharger' media.pk %}">{{ media.nom_original }}</a>
                     <small class="text-muted ms-2">— {{ media.ajoute_par.username }}, {{ media.cree_le|date:"d/m/Y H:i" }}</small>
                 </div>
                 {% empty %}
@@ -78,6 +90,7 @@
                 {% endfor %}
             </div>
         </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
