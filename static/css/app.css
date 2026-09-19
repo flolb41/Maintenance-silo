@@ -991,9 +991,95 @@ a:hover {
 }
 
 @media (max-width: 767.98px) {
+
+    html,
+    body {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    .app-main {
+        width: calc(100% - 20px);
+        padding: 14px 0 28px;
+    }
+
+    .app-header .container-fluid {
+        padding-right: 12px;
+        padding-left: 12px;
+    }
+
+    .navbar-brand {
+        min-width: 0;
+        max-width: calc(100% - 52px);
+        font-size: 0.98rem;
+    }
+
+    .navbar-brand span:last-child {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .app-header .navbar-collapse {
+        max-height: calc(100vh - 64px);
+        overflow-y: auto;
+    }
+
+    .app-header .navbar-nav {
+        width: 100%;
+    }
+
+    .app-header .nav-link {
+        width: 100%;
+        min-height: 44px;
+        padding: 10px 12px !important;
+    }
+
+    .app-header .dropdown-menu {
+        position: static !important;
+        width: 100%;
+        margin: 2px 0 6px;
+        border: 0;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: none;
+    }
+
+    .app-header .dropdown-item {
+        color: #dce8f5;
+    }
+
+    .app-header .dropdown-item:hover,
+    .app-header .dropdown-item:focus {
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+    }
+
     .page-heading {
         align-items: stretch;
         flex-direction: column;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .dashboard-title-lockup {
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .dashboard-logo {
+        width: 76px;
+        max-height: 54px;
+    }
+
+    .page-title {
+        font-size: 1.35rem;
+        line-height: 1.2;
+    }
+
+    .page-subtitle {
+        font-size: 0.88rem;
+        line-height: 1.4;
     }
 
     .page-heading .btn {
@@ -1011,6 +1097,59 @@ a:hover {
     .table tbody td,
     .table thead th {
         padding: 10px 11px;
+    }
+
+    .table-responsive {
+        margin-right: -1px;
+        margin-left: -1px;
+        border-radius: 6px;
+    }
+
+    .table-responsive>.table {
+        min-width: 620px;
+    }
+
+    .executive-panel-header,
+    .card-header,
+    .stock-total-line {
+        align-items: flex-start !important;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .executive-panel-header>*,
+    .card-header>* {
+        min-width: 0;
+    }
+
+    .stock-total-line>div {
+        flex: 1 1 140px;
+        min-width: 0;
+    }
+
+    .stock-view-switch {
+        width: 100%;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+    }
+
+    .stock-view-switch button {
+        white-space: nowrap;
+    }
+
+    .dashboard-recent-meta {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .site-grain-line {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .site-grain-line>div:first-child {
+        grid-column: 1 / -1;
     }
 
     .panne-actions-grid {
@@ -1072,6 +1211,35 @@ a:hover {
     .intervention-list-item form {
         grid-column: auto;
         justify-self: end;
+    }
+
+    .panne-form-section .card-body {
+        padding: 16px;
+    }
+
+    .panne-form-actions {
+        align-items: stretch;
+        flex-direction: column-reverse;
+        gap: 8px;
+    }
+
+    .panne-form-actions .btn {
+        width: 100%;
+    }
+
+    form p>input,
+    form p>select,
+    form p>textarea,
+    form .field-control,
+    form input,
+    form select,
+    form textarea {
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    .btn {
+        min-height: 42px;
     }
 }
 
