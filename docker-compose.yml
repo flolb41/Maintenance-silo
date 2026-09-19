@@ -19,6 +19,18 @@ services:
       redis:
         condition: service_started
 
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
   db:
     image: postgres:16-alpine
     environment:
@@ -43,3 +55,5 @@ volumes:
   redis_data:
   media_data:
   private_invoice_data:
+  caddy_data:
+  caddy_config:
