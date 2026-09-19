@@ -2388,6 +2388,16 @@ form p>textarea {
 
 @media (max-width: 767.98px) {
 
+    .executive-dashboard,
+    .executive-heading,
+    .executive-heading .dashboard-title-lockup,
+    .executive-heading .dashboard-title-lockup>div,
+    .executive-actions {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+    }
+
     .dashboard-title-lockup {
         align-items: flex-start;
         flex-direction: column;
@@ -2395,14 +2405,33 @@ form p>textarea {
     }
 
     .dashboard-logo {
-        width: 112px;
+        width: 96px;
         max-height: 62px;
+    }
+
+    .executive-heading h1 {
+        max-width: 100%;
+        font-size: clamp(1.55rem, 8vw, 2rem);
+        line-height: 1.12;
+        overflow-wrap: anywhere;
+    }
+
+    .executive-heading p:not(.eyebrow) {
+        max-width: 100%;
+        overflow-wrap: anywhere;
     }
 
     .executive-heading,
     .executive-actions {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .executive-actions .btn,
+    .executive-actions .dashboard-updated {
+        width: 100%;
+        justify-content: center;
+        margin-right: 0;
     }
 
     .dashboard-updated {
