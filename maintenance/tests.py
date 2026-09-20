@@ -741,9 +741,13 @@ class GestionSilosTests(SetupMixin):
                 f"{prefix}-0-nombre_toles_hauteur": "15",
             })
 
-        response = self.client.post(reverse("site_create"), donnees)
+        response = self.client.post(
+            reverse("site_create"),
+            donnees,
+            secure=True,
+        )
 
-        self.assertIn(response.status_code, {301, 302})
+        self.assertRedirects(response, reverse("site_list"))
         site = Site.objects.get(nom="Site sans structure")
         self.assertEqual(site.silos.count(), 0)
 
