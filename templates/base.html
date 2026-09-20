@@ -35,6 +35,9 @@
                     <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' or request.resolver_match.url_name == 'home' %}active{% endif %}" href="{% url 'dashboard' %}"><i class="bi bi-grid-1x2"></i> {% if profile.is_admin %}Pilotage{% else %}Tableau de bord{% endif %}</a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'mes_actions' %}active{% endif %}" href="{% url 'mes_actions' %}"><i class="bi bi-lightning-charge"></i> Mes actions</a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link {% if 'panne' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'panne_liste' %}"><i class="bi bi-exclamation-diamond"></i> Pannes</a>
                 </li>
                 {% if profile.is_admin or profile.is_silo or profile.is_maintenance %}

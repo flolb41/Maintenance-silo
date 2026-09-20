@@ -623,6 +623,98 @@ def dashboard(request):
     return render(request, 'maintenance/dashboard.html', ctx)
 
 
+@login_required
+def mes_actions(request):
+    user = request.user
+    profile, _ = Profile.objects.get_or_create(user=user)
+    sites = get_sites_utilisateur(user)
+    context = {"profile": profile, "actions": []}
+
+    def ajouter_actions(titre, icone, objets, detail_url, meta, badge):
+        elements = []
+        for objet in objets[:5]:
+            elements.append({
+                "titre": getattr(objet, "titre", str(objet)),
+                "meta": meta(objet),
+                "badge": badge(objet),
+                "url": reverse(detail_url, args=[objet.pk]),
+            })
+        if elements:
+            context["actions"].append({
+                "titre": titre,
+                "icone": icone,
+                "elements": elements,
+            })
+
+    if profile.is_admin():
+        ajouter_actions(
+            "Pannes à affecter", "bi-person-plus",
+            Panne.objects.filter(site__in=sites, statut=Panne.STATUT_NOUVELLE, affecte_a__isnull=True).select_related(
+                "site").order_by("-priorite", "date_signalement"),
+            "panne_detail",
+            lambda panne: panne.site.nom,
+            lambda panne: panne.get_priorite_display(),
+        )
+        ajouter_actions(
+            "Préventives à valider", "bi-shield-check",
+            MaintenancePreventive.objects.filter(Q(site__in=sites) | Q(
+                equipement__site__in=sites), statut=MaintenancePreventive.Statut.A_VALIDER).select_related("site", "equipement").order_by("date_echeance"),
+            "preventive_detail",
+            lambda preventive: preventive.site.nom if preventive.site_id else preventive.equipement.site.nom,
+            lambda preventive: "Validation",
+        )
+        ajouter_actions(
+            "Préventives à envoyer", "bi-send",
+            MaintenancePreventive.objects.filter(Q(site__in=sites) | Q(equipement__site__in=sites), statut__in=[
+                                                 MaintenancePreventive.Statut.BROUILLON, MaintenancePreventive.Statut.REJETEE]).select_related("site", "equipement").order_by("date_echeance"),
+            "preventive_detail",
+            lambda preventive: preventive.site.nom if preventive.site_id else preventive.equipement.site.nom,
+            lambda preventive: preventive.get_statut_display(),
+        )
+    elif profile.is_maintenance():
+        ajouter_actions(
+            "Mes pannes actives", "bi-tools",
+            _pannes_actives_affectees(user).select_related(
+                "site", "equipement").order_by("-priorite", "date_signalement"),
+            "panne_detail",
+            lambda panne: panne.site.nom,
+            lambda panne: panne.get_statut_display(),
+        )
+        ajouter_actions(
+            "Préventives à valider", "bi-shield-check",
+            MaintenancePreventive.objects.filter(
+                equipement_id__in=_pannes_actives_affectees(user).exclude(
+                    equipement__isnull=True).values("equipement_id"),
+                statut=MaintenancePreventive.Statut.A_VALIDER,
+            ).select_related("site", "equipement").order_by("date_echeance"),
+            "preventive_detail",
+            lambda preventive: preventive.equipement.site.nom,
+            lambda preventive: "Validation",
+        )
+    else:
+        ajouter_actions(
+            "Préventives à traiter", "bi-calendar2-check",
+            MaintenancePreventive.objects.filter(
+                affecte_a=user,
+                statut__in=[MaintenancePreventive.Statut.ENVOYEE,
+                            MaintenancePreventive.Statut.RECUE, MaintenancePreventive.Statut.EN_COURS],
+            ).select_related("site", "equipement").order_by("date_echeance"),
+            "preventive_detail",
+            lambda preventive: preventive.site.nom if preventive.site_id else preventive.equipement.site.nom,
+            lambda preventive: preventive.get_statut_display(),
+        )
+        ajouter_actions(
+            "Pannes à compléter", "bi-pencil-square",
+            Panne.objects.filter(signale_par=user, statut=Panne.STATUT_NOUVELLE).select_related(
+                "site").order_by("-date_signalement"),
+            "panne_detail",
+            lambda panne: panne.site.nom,
+            lambda panne: "Nouvelle",
+        )
+
+    return render(request, "maintenance/mes_actions.html", context)
+
+
 # ─────────────────────────────────────────────
 # SITES
 # ─────────────────────────────────────────────
