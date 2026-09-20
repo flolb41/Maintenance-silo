@@ -90,6 +90,14 @@ services:
         condition: service_healthy
     entrypoint: ["/bin/sh", "/usr/local/bin/backup"]
 
+  backup-verify:
+    image: postgres:16-alpine
+    profiles: ["maintenance"]
+    volumes:
+      - ${BACKUP_DIR:-./backups}:/backups:ro
+      - ./scripts/verify-backup.sh:/usr/local/bin/verify-backup:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/verify-backup"]
+
 volumes:
   postgres_data:
   redis_data:

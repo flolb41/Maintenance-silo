@@ -103,6 +103,11 @@ python manage.py generate_recurring_preventives [--days-ahead 31] [--dry-run]
 
 Exemple cron (toutes les heures) :
 ```
+0 * * * * /app/.venv/bin/python /app/manage.py mark_overdue
+15 0 * * * /app/.venv/bin/python /app/manage.py generate_recurring_preventives --days-ahead 31
+```
+
+La commande de génération est idempotente : elle peut être relancée sans créer de doublon. Sur Windows, la même commande peut être programmée quotidiennement avec le Planificateur de tâches.
 
 ## Sauvegardes
 
@@ -112,12 +117,29 @@ La sauvegarde PostgreSQL, des médias et des factures privées est exécutée à
 docker compose --profile maintenance run --rm backup
 ```
 
-Définissez `BACKUP_DIR` sur un disque distinct du Raspberry Pi et `BACKUP_RETENTION_DAYS` dans `.env`. Testez régulièrement la restauration d'un dump avec `pg_restore` dans une base de test.
-0 * * * * /app/.venv/bin/python /app/manage.py mark_overdue
-15 0 * * * /app/.venv/bin/python /app/manage.py generate_recurring_preventives --days-ahead 31
+Chaque sauvegarde contient `postgres.dump`, `media.tar.gz`, `private-invoices.tar.gz` et `SHA256SUMS`. Vérifiez l'intégrité de la dernière sauvegarde sans écrire dans la production :
+
+```bash
+docker compose --profile maintenance run --rm backup-verify
 ```
 
-La commande de génération est idempotente : elle peut être relancée sans créer de doublon. Sur Windows, la même commande peut être programmée quotidiennement avec le Planificateur de tâches.
+Définissez `BACKUP_DIR` sur un disque distinct du Raspberry Pi et `BACKUP_RETENTION_DAYS` dans `.env`. Copiez aussi ce répertoire vers un stockage hors site chiffré.
+
+### Restauration de test
+
+Effectuez une restauration dans une base et des volumes de test, jamais sur la production en cours :
+
+```bash
+# Vérifier d'abord l'archive.
+docker compose --profile maintenance run --rm backup-verify 20260920-092725
+
+# Restaurer le dump dans une base PostgreSQL de test vide.
+pg_restore --clean --if-exists --no-owner --host <hote> --username <utilisateur> --dbname <base_test> postgres.dump
+
+# Restaurer les fichiers à la racine des volumes de test.
+tar -xzf media.tar.gz -C <volume_media_test>
+tar -xzf private-invoices.tar.gz -C <volume_factures_test>
+```
 
 ## Optimisation des médias
 
