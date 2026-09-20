@@ -2805,7 +2805,7 @@ Total TTC 3 374,71 EUR
         resultat = extract_invoice_data_from_document(fichier)
 
         self.assertEqual(resultat["numero"], "FV002050")
-        self.assertEqual(resultat["fournisseur"], "L'ALGERIE")
+        self.assertEqual(resultat["fournisseur"], "GUERINEAU Truck Service")
         self.assertEqual(str(resultat["date_facture"]), "2026-07-28")
         self.assertEqual(resultat["montant_ht"], Decimal("2812.26"))
         self.assertEqual(resultat["montant_tva"], Decimal("562.45"))
@@ -2814,6 +2814,36 @@ Total TTC 3 374,71 EUR
         self.assertNotIn(
             "Montants comptables incohérents",
             resultat["_detection"]["alertes"],
+        )
+
+    def test_extraction_calloux_detecte_description_et_vehicule(self):
+        contenu = """CALLOUX
+Facture
+Numéro F-2026-08-4
+Date d’émission 03 août 2026
+Date d’échéance 15 août 2026
+Émetteur ou Émettrice
+CALLOUX
+Client ou Cliente
+AGRI NEGOCE SAS
+Location Man TGX 470 immatriculé GT 111 AD du 26 juin au 30 juillet 2026
+\fTotal HT 2 800,00 €
+Total TVA 560,00 €
+Total TTC 3 360,00 €
+"""
+        fichier = io.BytesIO(contenu.encode("utf-8"))
+        fichier.name = "facture-calloux.txt"
+
+        resultat = extract_invoice_data_from_document(fichier)
+
+        self.assertEqual(resultat["numero"], "F-2026-08-4")
+        self.assertEqual(resultat["fournisseur"], "CALLOUX")
+        self.assertEqual(str(resultat["date_facture"]), "2026-08-03")
+        self.assertEqual(resultat["montant_ttc"], Decimal("3360.00"))
+        self.assertIn("Location Man TGX 470", resultat["description_detectee"])
+        self.assertEqual(
+            resultat["vehicule_detecte"]["immatriculation"],
+            "GT-111-AD",
         )
 
     def test_extraction_facture_guerineau_lit_le_recapitulatif_reel(self):

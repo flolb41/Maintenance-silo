@@ -2450,9 +2450,12 @@ def panne_ajouter_factures(request, pk):
                     montant_ttc=montant_ttc,
                     date_facture=date_facture,
                     description=(
-                        'Toutes les informations ont été détectées automatiquement. Vérifiez-les avant validation.'
-                        if detection_complete else
-                        'Détection partielle. Complétez ou vérifiez les informations de la facture.'
+                        invoice_data.get('description_detectee')
+                        or (
+                            'Toutes les informations ont été détectées automatiquement. Vérifiez-les avant validation.'
+                            if detection_complete else
+                            'Détection partielle. Complétez ou vérifiez les informations de la facture.'
+                        )
                     ),
                     fichier=fichier,
                     created_by=request.user,

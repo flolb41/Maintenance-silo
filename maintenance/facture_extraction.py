@@ -218,7 +218,7 @@ def _supplier_from_email(text):
 def _extract_supplier(text):
     raw_lines = [line.rstrip() for line in text.splitlines() if line.strip()]
     lines = [line.strip() for line in raw_lines]
-    for line in lines[:20]:
+    for index, line in enumerate(lines[:20]):
         found = re.match(
             r"(?i)^\s*(?:fournisseur|supplier|vendeur|[ée]metteur)\s*[:\-]\s*(.{2,90})$",
             line,
@@ -228,25 +228,43 @@ def _extract_supplier(text):
             if "@" in value:
                 return _supplier_from_email(value) or value
             return value
+        if re.fullmatch(r"(?i)(?:[ée]metteur(?:\s+ou\s+[ée]mettrice)?|fournisseur|vendeur)", line):
+            for candidate in lines[index + 1:index + 4]:
+                if (
+                    re.search(r"[a-zA-ZÀ-ÖØ-öø-ÿ]", candidate)
+                    and not re.search(r"@|\d{4,}", candidate)
+                ):
+                    return candidate.strip(" -:;.")[:90]
 
     for email_index, line in enumerate(lines[:20]):
         if "@" not in line:
             continue
         for candidate in reversed(raw_lines[max(0, email_index - 6):email_index]):
-            candidate = re.split(r"\s{3,}", candidate.strip(), maxsplit=1)[0]
-            lowered = candidate.lower()
-            if (
-                not candidate
-                or re.search(r"\d{4,}|@", candidate)
-                or re.fullmatch(r"[\d\s+.()\-]+", candidate)
-                or any(token in lowered for token in (
-                    "rue", "avenue", "boulevard", "route", "cedex",
-                    "tél", "tel", "facture", "client",
-                ))
-            ):
-                continue
-            if re.search(r"[a-zA-ZÀ-ÖØ-öø-ÿ]", candidate):
-                return candidate.strip(" -:;.")[:90]
+            candidates = re.split(r"\s{3,}", candidate.strip())
+            candidates = [value for value in candidates if value.strip()]
+            candidates.sort(
+                key=lambda value: (
+                    bool(
+                        re.search(r"(?i)\b(?:truck|service|solutions|sarl|sas|sa|eurl)\b", value)),
+                    len(value.split()),
+                    len(value),
+                ),
+                reverse=True,
+            )
+            for candidate in candidates:
+                lowered = candidate.lower()
+                if (
+                    not candidate
+                    or re.search(r"\d{4,}|@", candidate)
+                    or re.fullmatch(r"[\d\s+.()\-]+", candidate)
+                    or any(token in lowered for token in (
+                        "rue", "avenue", "boulevard", "route", "cedex",
+                        "tél", "tel", "facture", "client",
+                    ))
+                ):
+                    continue
+                if re.search(r"[a-zA-ZÀ-ÖØ-öø-ÿ]", candidate):
+                    return candidate.strip(" -:;.")[:90]
 
     legal_forms = r"SARL|SA|SAS|SASU|EURL|SCI|SNC|SCA|SELARL|SCOP|EI"
     legal_name = re.compile(
@@ -303,6 +321,45 @@ def _extract_supplier(text):
         if re.search(r"[a-zA-ZÀ-ÖØ-öø-ÿ]", line) and not re.search(r"\d{4,}", line):
             return line.strip(" -:;.")
     return None
+
+
+def _extract_description(text):
+    patterns = (
+        r"(?i)^\s*(?:commande|objet|motif)\s*(?:de|du)?\s*[:\-]?\s*(.{12,220})$",
+        r"(?i)^\s*(location\s+.{8,220})$",
+        r"(?i)^\s*(?:intervention|prestation)\s*(?:le|du)?\s+.{8,220}$",
+    )
+    for line in text.splitlines()[:80]:
+        normalized = _normalize_whitespace(line)
+        if not normalized or re.search(r"(?i)\b(?:total|tva|facture|iban)\b", normalized):
+            continue
+        for pattern in patterns:
+            match = re.match(pattern, normalized)
+            if match:
+                return (match.group(1) if match.lastindex else normalized)[:500]
+    return None
+
+
+def _extract_vehicle_context(text):
+    header = "\n".join(text.splitlines()[:90])
+    immatriculation = re.search(
+        r"(?i)\b([A-Z]{2}\s*-?\s*\d{3}\s*-?\s*[A-Z]{2})\b",
+        header,
+    )
+    vin = re.search(r"(?i)\b([A-HJ-NPR-Z0-9]{17})\b", header)
+    kilometrage = re.search(
+        r"(?i)\b(?:km|kilom[ée]trage)\s*[:.]?\s*([\d\s]{3,})\s*km?\b",
+        header,
+    )
+    result = {}
+    if immatriculation:
+        result["immatriculation"] = re.sub(
+            r"\s*[- ]\s*", "-", immatriculation.group(1)).upper()
+    if vin:
+        result["vin"] = vin.group(1).upper()
+    if kilometrage:
+        result["kilometrage"] = int(re.sub(r"\s+", "", kilometrage.group(1)))
+    return result
 
 
 AMOUNT_PATTERN = re.compile(
@@ -966,10 +1023,23 @@ def extract_invoice_data_from_document(file_obj):
     if date_facture:
         data["date_facture"] = date_facture
 
+    description = _extract_description(first_page)
+    if description:
+        data["description_detectee"] = description
+
+    vehicule = _extract_vehicle_context(first_page)
+    if vehicule:
+        data["vehicule_detecte"] = vehicule
+
     amounts, derived_fields = _extract_amounts(last_page)
     data.update(amounts)
-    data["_detection"] = _build_detection_metadata(
+    detection = _build_detection_metadata(
         data, derived_fields, extraction_method, source_text=text
     )
+    if description:
+        detection["description_detectee"] = description
+    if vehicule:
+        detection["vehicule_detecte"] = vehicule
+    data["_detection"] = detection
 
     return data
