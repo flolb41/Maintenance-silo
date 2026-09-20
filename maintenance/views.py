@@ -1239,20 +1239,33 @@ class PieceMouvementView(AdminRequiredMixin, View):
         return render(request, self.template_name, {'form': MouvementPieceForm(), 'object': piece})
 
     def post(self, request, *args, **kwargs):
-        piece = self.get_piece(**kwargs)
         form = MouvementPieceForm(request.POST)
         if form.is_valid():
-            mouvement = form.save(commit=False)
-            mouvement.piece = piece
-            mouvement.effectue_par = request.user
-            if mouvement.type_mouvement == MouvementPiece.SORTIE and mouvement.quantite > piece.stock:
-                form.add_error(
-                    'quantite', 'La quantité sortie dépasse le stock disponible.')
-            else:
-                piece.stock += mouvement.quantite if mouvement.type_mouvement == MouvementPiece.ENTREE else -mouvement.quantite
-                piece.save(update_fields=['stock'])
-                mouvement.save()
-                return redirect('piece_list')
+            with transaction.atomic():
+                piece = PieceDetachee.objects.select_for_update().get(
+                    pk=kwargs['pk'],
+                    site__in=get_sites_utilisateur(request.user),
+                )
+                mouvement = form.save(commit=False)
+                mouvement.piece = piece
+                mouvement.effectue_par = request.user
+                if (
+                    mouvement.type_mouvement == MouvementPiece.SORTIE
+                    and mouvement.quantite > piece.stock
+                ):
+                    form.add_error(
+                        'quantite',
+                        'La quantité sortie dépasse le stock disponible.',
+                    )
+                else:
+                    if mouvement.type_mouvement == MouvementPiece.ENTREE:
+                        piece.stock += mouvement.quantite
+                    else:
+                        piece.stock -= mouvement.quantite
+                    piece.save(update_fields=['stock'])
+                    mouvement.save()
+                    return redirect('piece_list')
+        piece = self.get_piece(**kwargs)
         return render(request, self.template_name, {'form': form, 'object': piece})
 
 

@@ -168,6 +168,13 @@ ALLOWED_UPLOAD_EXTENSIONS = [
 
 # --- Sécurité (production) ---
 if not DEBUG:
+    if SECRET_KEY == "dev-only-insecure-secret-key-change-me":
+        raise RuntimeError("SECRET_KEY doit être défini en production.")
+    if not ALLOWED_HOSTS:
+        raise RuntimeError("ALLOWED_HOSTS doit être défini en production.")
+    if not CSRF_TRUSTED_ORIGINS:
+        raise RuntimeError(
+            "CSRF_TRUSTED_ORIGINS doit être défini en production.")
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True

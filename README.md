@@ -103,6 +103,16 @@ python manage.py generate_recurring_preventives [--days-ahead 31] [--dry-run]
 
 Exemple cron (toutes les heures) :
 ```
+
+## Sauvegardes
+
+La sauvegarde PostgreSQL, des médias et des factures privées est exécutée à la demande avec :
+
+```bash
+docker compose --profile maintenance run --rm backup
+```
+
+Définissez `BACKUP_DIR` sur un disque distinct du Raspberry Pi et `BACKUP_RETENTION_DAYS` dans `.env`. Testez régulièrement la restauration d'un dump avec `pg_restore` dans une base de test.
 0 * * * * /app/.venv/bin/python /app/manage.py mark_overdue
 15 0 * * * /app/.venv/bin/python /app/manage.py generate_recurring_preventives --days-ahead 31
 ```

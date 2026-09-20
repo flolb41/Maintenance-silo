@@ -16,7 +16,8 @@ htmlcov
 .pytest_cache
 staticfiles
 media
-private_invoices.git
+private_invoices
+backups
 .gitignore
 .env
 .venv

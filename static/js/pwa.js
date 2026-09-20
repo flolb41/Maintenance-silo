@@ -1,5 +1,8 @@
 (() => {
-  const QUEUE_KEY = "maintenance-silo-offline-actions";
+  const userId = document.body.dataset.userId;
+  const QUEUE_KEY = userId
+    ? `maintenance-silo-offline-actions-${userId}`
+    : "maintenance-silo-offline-actions-anonymous";
   const readQueue = () => JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
   const writeQueue = (queue) => localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
 
@@ -65,6 +68,11 @@
   document.addEventListener("submit", (event) => {
     if (event.target.matches("[data-offline-queue]")) {
       if (queueSimpleForm(event.target)) event.preventDefault();
+    }
+  });
+  document.addEventListener("click", (event) => {
+    if (event.target.closest("[data-clear-offline-queue]")) {
+      localStorage.removeItem(QUEUE_KEY);
     }
   });
 

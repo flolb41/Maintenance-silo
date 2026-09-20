@@ -7,8 +7,8 @@ services:
              uvicorn config.asgi:application --host 0.0.0.0 --port 8000"
     env_file:
       - .env
+    restart: unless-stopped
     volumes:
-      - .:/app
       - media_data:/app/media
       - private_invoice_data:/app/private_invoices
     depends_on:
@@ -16,6 +16,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/auth/login/', timeout=5)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   caddy:
     image: caddy:2-alpine
@@ -27,7 +33,9 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      - web
+      web:
+        condition: service_healthy
+    restart: unless-stopped
 
   db:
     image: postgres:16-alpine
@@ -37,6 +45,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -47,6 +56,39 @@ services:
     image: redis:7-alpine
     volumes:
       - redis_data:/data
+    restart: unless-stopped
+
+  scheduler:
+    build: .
+    command: >
+      sh -c "while true; do
+             python manage.py mark_overdue;
+             python manage.py generate_recurring_preventives --days-ahead 31;
+             sleep 3600;
+             done"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  backup:
+    image: postgres:16-alpine
+    profiles: ["maintenance"]
+    env_file:
+      - .env
+    environment:
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+    volumes:
+      - media_data:/source/media:ro
+      - private_invoice_data:/source/private_invoices:ro
+      - ${BACKUP_DIR:-./backups}:/backups
+      - ./scripts/backup.sh:/usr/local/bin/backup:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "/usr/local/bin/backup"]
 
 volumes:
   postgres_data:

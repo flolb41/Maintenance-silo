@@ -1,4 +1,4 @@
-const CACHE_NAME = "maintenance-silo-shell-v1";
+const CACHE_NAME = "maintenance-silo-static-v2";
 const APP_SHELL = [
   "/static/css/app.css",
   "/static/js/realtime.js",
@@ -26,6 +26,22 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  const url = new URL(event.request.url);
+  const isStaticAsset = url.origin === self.location.origin
+    && url.pathname.startsWith("/static/");
+
+  if (!isStaticAsset) {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        if (event.request.mode === "navigate") {
+          return caches.match("/static/offline.html");
+        }
+        return Response.error();
+      })
+    );
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
