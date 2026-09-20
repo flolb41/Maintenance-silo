@@ -2983,3 +2983,89 @@ form p>textarea {
         justify-self: start;
     }
 }
+
+/* Compact vertical layout for laptops and small-height tablet screens. */
+@media (max-height: 700px) {
+    .app-header .navbar {
+        min-height: 54px;
+    }
+
+    .app-header .nav-link {
+        min-height: 36px;
+        padding-top: 6px !important;
+        padding-bottom: 6px !important;
+    }
+
+    .app-main {
+        padding-top: 14px;
+        padding-bottom: 24px;
+    }
+
+    .page-heading {
+        margin-bottom: 14px;
+    }
+
+    .page-title {
+        font-size: clamp(1.35rem, 1.8vw, 1.65rem);
+    }
+
+    .page-subtitle {
+        margin-top: 3px;
+        font-size: 0.9rem;
+    }
+
+    .app-main .mb-4 {
+        margin-bottom: 1rem !important;
+    }
+
+    .app-main .row.g-4 {
+        --bs-gutter-y: 1rem;
+    }
+
+    .card-header {
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
+
+    .card-body {
+        padding: 14px;
+    }
+
+    .btn {
+        min-height: 38px;
+    }
+
+    .executive-dashboard {
+        gap: 14px;
+    }
+
+    .executive-heading {
+        padding-top: 0;
+    }
+
+    .executive-command-bar {
+        min-height: 0;
+    }
+
+    .command-bar-intro,
+    .command-bar-metric {
+        min-height: 56px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
+
+    .executive-kpi {
+        min-height: 82px;
+    }
+
+    .admin-analytics-chart {
+        height: 155px;
+        padding-top: 8px;
+        padding-bottom: 10px;
+    }
+
+    .table> :not(caption)>*>* {
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+}
