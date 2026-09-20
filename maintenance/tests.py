@@ -2512,6 +2512,43 @@ class FactureTests(SetupMixin):
             statut=Panne.Statut.EN_COURS,
         )
 
+    def test_liste_factures_filtre_par_site_et_periode(self):
+        self.client.login(username="admin_t", password="testpass123")
+        panne_site_1 = self._panne()
+        panne_site_2 = Panne.objects.create(
+            site=self.site2,
+            declarant=self.silo2,
+            titre="Panne autre site",
+            description="Test",
+            statut=Panne.Statut.EN_COURS,
+        )
+        facture_site_1 = Facture.objects.create(
+            panne=panne_site_1,
+            numero="SITE-1-AOUT",
+            fournisseur="Fournisseur site 1",
+            montant_ht=Decimal("100.00"),
+            montant_ttc=Decimal("120.00"),
+            date_facture=date(2026, 8, 10),
+        )
+        facture_site_2 = Facture.objects.create(
+            panne=panne_site_2,
+            numero="SITE-2-SEPT",
+            fournisseur="Fournisseur site 2",
+            montant_ht=Decimal("200.00"),
+            montant_ttc=Decimal("240.00"),
+            date_facture=date(2026, 9, 10),
+        )
+
+        response = self.client.get(reverse("facture_list"), {
+            "site": self.site1.pk,
+            "start_date": "2026-08-31",
+            "end_date": "2026-08-01",
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, facture_site_1.numero)
+        self.assertNotContains(response, facture_site_2.numero)
+
     def test_extraction_distingue_entete_echeance_et_totaux(self):
         contenu = """AXEREAL SERVICES SAS
 FACTURE N° FAC-2026-0042

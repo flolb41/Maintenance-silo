@@ -1212,6 +1212,10 @@ class PieceListView(AdminRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['sites'] = get_sites_utilisateur(self.request.user)
         context['current_q'] = self.request.GET.get('q', '')
+        context['current_site'] = self.request.GET.get('site', '')
+        filters = self.request.GET.copy()
+        filters.pop('page', None)
+        context['filter_query'] = filters.urlencode()
         return context
 
 
@@ -2964,6 +2968,9 @@ class FactureListView(AdminRequiredMixin, ListView):
         statut = self.request.GET.get('statut')
         type_f = self.request.GET.get('type')
         q = self.request.GET.get('q')
+        site_id = self.request.GET.get('site')
+        start_raw = self.request.GET.get('start_date')
+        end_raw = self.request.GET.get('end_date')
 
         if statut:
             qs = qs.filter(statut=statut)
@@ -2972,6 +2979,26 @@ class FactureListView(AdminRequiredMixin, ListView):
         if q:
             qs = qs.filter(Q(numero__icontains=q) |
                            Q(fournisseur__icontains=q))
+        if site_id:
+            qs = qs.filter(
+                Q(panne__site_id=site_id)
+                | Q(preventive__site_id=site_id)
+                | Q(preventive__equipement__site_id=site_id)
+            )
+        try:
+            start_date = date.fromisoformat(start_raw) if start_raw else None
+        except ValueError:
+            start_date = None
+        try:
+            end_date = date.fromisoformat(end_raw) if end_raw else None
+        except ValueError:
+            end_date = None
+        if start_date and end_date and start_date > end_date:
+            start_date, end_date = end_date, start_date
+        if start_date:
+            qs = qs.filter(date_facture__gte=start_date)
+        if end_date:
+            qs = qs.filter(date_facture__lte=end_date)
 
         return qs
 
@@ -2982,6 +3009,13 @@ class FactureListView(AdminRequiredMixin, ListView):
         ctx['current_statut'] = self.request.GET.get('statut', '')
         ctx['current_type'] = self.request.GET.get('type', '')
         ctx['current_q'] = self.request.GET.get('q', '')
+        ctx['sites'] = get_sites_utilisateur(self.request.user)
+        ctx['current_site'] = self.request.GET.get('site', '')
+        ctx['current_start_date'] = self.request.GET.get('start_date', '')
+        ctx['current_end_date'] = self.request.GET.get('end_date', '')
+        filters = self.request.GET.copy()
+        filters.pop('page', None)
+        ctx['filter_query'] = filters.urlencode()
         return ctx
 
 

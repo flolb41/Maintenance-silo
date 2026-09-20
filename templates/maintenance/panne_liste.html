@@ -13,6 +13,8 @@
     <div><label class="form-label" for="panne-statut">Statut</label><select id="panne-statut" class="form-select" name="statut"><option value="">Tous</option>{% for value, label in statuts %}<option value="{{ value }}" {% if current_statut == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
     <div><label class="form-label" for="panne-priorite">Priorité</label><select id="panne-priorite" class="form-select" name="priorite"><option value="">Toutes</option>{% for value, label in priorites %}<option value="{{ value }}" {% if current_priorite == value|stringformat:'s' %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
     <div><label class="form-label" for="panne-site">Site</label><select id="panne-site" class="form-select" name="site"><option value="">Tous</option>{% for site in sites %}<option value="{{ site.pk }}" {% if current_site == site.pk|stringformat:'s' %}selected{% endif %}>{{ site.nom }}</option>{% endfor %}</select></div>
+    <div><label class="form-label" for="panne-start-date">Du</label><input id="panne-start-date" class="form-control" type="date" name="start_date" value="{{ current_start_date }}"></div>
+    <div><label class="form-label" for="panne-end-date">Au</label><input id="panne-end-date" class="form-control" type="date" name="end_date" value="{{ current_end_date }}"></div>
     <div class="action-group"><button class="btn btn-primary" type="submit"><i class="bi bi-funnel me-1"></i>Filtrer</button><a class="btn btn-outline-secondary" href="{% url 'panne_liste' %}" title="Réinitialiser"><i class="bi bi-arrow-counterclockwise"></i></a></div>
 </form>
 
