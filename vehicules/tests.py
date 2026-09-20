@@ -13,7 +13,7 @@ from django.utils.timezone import localdate
 
 from maintenance.models import Profile, Site
 
-from .models import EntretienVehicule, Vehicule
+from .models import ImmobilisationVehicule, ReleveCarburantVehicule, EntretienVehicule, Vehicule
 
 
 User = get_user_model()
@@ -290,6 +290,53 @@ class VehiculeWorkflowTests(TestCase):
         entretien = self.vehicule.entretiens.get()
         self.assertEqual(entretien.cout, Decimal("850.50"))
         self.assertEqual(entretien.cree_par, self.admin)
+
+    def test_releve_carburant_met_a_jour_kilometrage(self):
+        self.client.login(username="admin_vehicules", password="testpass123")
+        response = self.client.post(
+            reverse("vehicules:carburant_ajouter", args=[self.vehicule.pk]),
+            {
+                "produit": ReleveCarburantVehicule.Produit.CARBURANT,
+                "date_releve": localdate().isoformat(),
+                "quantite_litres": "120.50",
+                "kilometrage": 121000,
+                "cout": "210.00",
+            },
+            secure=True,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.vehicule.refresh_from_db()
+        self.assertEqual(self.vehicule.kilometrage, 121000)
+        self.assertEqual(self.vehicule.releves_carburant.count(), 1)
+
+    def test_immobilisation_unique_et_cloture(self):
+        self.client.login(username="admin_vehicules", password="testpass123")
+        response = self.client.post(
+            reverse("vehicules:immobilisation_ajouter",
+                    args=[self.vehicule.pk]),
+            {
+                "nature": ImmobilisationVehicule.Nature.HORS_SERVICE,
+                "debut": localdate().isoformat(),
+                "motif": "Panne moteur",
+            },
+            secure=True,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.vehicule.refresh_from_db()
+        self.assertEqual(self.vehicule.statut, Vehicule.Statut.HORS_SERVICE)
+        immobilisation = self.vehicule.immobilisations.get(fin__isnull=True)
+
+        response = self.client.post(
+            reverse("vehicules:immobilisation_cloturer",
+                    args=[immobilisation.pk]),
+            {"fin": localdate().isoformat(), "statut_reprise": Vehicule.Statut.DISPONIBLE},
+            secure=True,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.vehicule.refresh_from_db()
+        immobilisation.refresh_from_db()
+        self.assertIsNotNone(immobilisation.fin)
+        self.assertEqual(self.vehicule.statut, Vehicule.Statut.DISPONIBLE)
 
     def test_facture_entretien_est_stockee_hors_des_medias_publics(self):
         entretien = EntretienVehicule.objects.create(

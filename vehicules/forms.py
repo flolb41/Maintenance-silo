@@ -2,11 +2,18 @@ import os
 
 from django import forms
 from django.core.exceptions import ValidationError
+from django.utils.timezone import localdate
 
 from maintenance.forms import valider_fichier
 from maintenance.models import Site
 
-from .models import EntretienVehicule, Vehicule
+from .models import (
+    DocumentReglementaireVehicule,
+    EntretienVehicule,
+    ImmobilisationVehicule,
+    ReleveCarburantVehicule,
+    Vehicule,
+)
 
 
 class VehiculeForm(forms.ModelForm):
@@ -148,3 +155,89 @@ class EntretienVehiculeForm(forms.ModelForm):
         if facture:
             valider_fichier(facture)
         return facture
+
+
+class ReleveCarburantVehiculeForm(forms.ModelForm):
+    class Meta:
+        model = ReleveCarburantVehicule
+        fields = ["produit", "date_releve",
+                  "quantite_litres", "kilometrage", "cout"]
+        widgets = {
+            "produit": forms.Select(attrs={"class": "form-select"}),
+            "date_releve": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "quantite_litres": forms.NumberInput(attrs={"class": "form-control", "min": "0.01", "step": "0.01"}),
+            "kilometrage": forms.NumberInput(attrs={"class": "form-control", "min": 0}),
+            "cout": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+        }
+
+    def __init__(self, *args, vehicule=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.vehicule = vehicule
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("date_releve") and cleaned["date_releve"] > localdate():
+            self.add_error(
+                "date_releve", "Le relevé ne peut pas être daté dans le futur.")
+        if self.vehicule and cleaned.get("kilometrage") is not None:
+            if cleaned["kilometrage"] < self.vehicule.kilometrage:
+                self.add_error(
+                    "kilometrage", "Le kilométrage ne peut pas diminuer.")
+            if (
+                cleaned.get(
+                    "produit") == ReleveCarburantVehicule.Produit.ADBLUE
+                and self.vehicule.carburant != Vehicule.Carburant.DIESEL
+            ):
+                self.add_error(
+                    "produit", "L'AdBlue est réservé aux véhicules diesel.")
+        return cleaned
+
+
+class ImmobilisationVehiculeForm(forms.ModelForm):
+    class Meta:
+        model = ImmobilisationVehicule
+        fields = ["nature", "debut", "motif"]
+        widgets = {
+            "nature": forms.Select(attrs={"class": "form-select"}),
+            "debut": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "motif": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
+        }
+
+    def clean_debut(self):
+        return self.cleaned_data["debut"]
+
+
+class ClotureImmobilisationVehiculeForm(forms.Form):
+    fin = forms.DateField(widget=forms.DateInput(
+        attrs={"class": "form-control", "type": "date"}), initial=localdate)
+    statut_reprise = forms.ChoiceField(
+        choices=[
+            (Vehicule.Statut.DISPONIBLE, "Disponible"),
+            (Vehicule.Statut.EN_SERVICE, "En service"),
+        ],
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+
+
+class DocumentReglementaireVehiculeForm(forms.ModelForm):
+    class Meta:
+        model = DocumentReglementaireVehicule
+        fields = ["type_document", "fichier"]
+        widgets = {
+            "type_document": forms.Select(attrs={"class": "form-select"}),
+            "fichier": forms.ClearableFileInput(attrs={"class": "form-control", "accept": "application/pdf"}),
+        }
+
+    def clean_fichier(self):
+        fichier = self.cleaned_data["fichier"]
+        valider_fichier(fichier)
+        if os.path.splitext(fichier.name)[1].lower() != ".pdf":
+            raise ValidationError(
+                "Le document réglementaire doit être un PDF.")
+        fichier.seek(0)
+        signature = fichier.read(5)
+        fichier.seek(0)
+        if signature != b"%PDF-":
+            raise ValidationError(
+                "Le document réglementaire doit être un PDF valide.")
+        return fichier

@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.db.models import Q, Sum
 from django.http import FileResponse, Http404
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
 from django.utils.timezone import localdate
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
@@ -9,8 +9,21 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 from maintenance.mixins import AdminRequiredMixin
 from maintenance.models import Site
 
-from .forms import EntretienVehiculeForm, VehiculeForm
-from .models import EntretienVehicule, Vehicule
+from .forms import (
+    ClotureImmobilisationVehiculeForm,
+    DocumentReglementaireVehiculeForm,
+    EntretienVehiculeForm,
+    ImmobilisationVehiculeForm,
+    ReleveCarburantVehiculeForm,
+    VehiculeForm,
+)
+from .models import (
+    DocumentReglementaireVehicule,
+    EntretienVehicule,
+    ImmobilisationVehicule,
+    ReleveCarburantVehicule,
+    Vehicule,
+)
 
 
 CATEGORIES_GEREES = (
@@ -92,6 +105,14 @@ class VehiculeDetailView(AdminRequiredMixin, DetailView):
             "cree_par")
         contexte["cout_total"] = self.object.entretiens.aggregate(total=Sum("cout"))[
             "total"] or 0
+        contexte["releves_carburant"] = self.object.releves_carburant.all()[:8]
+        contexte["cout_carburant"] = self.object.releves_carburant.aggregate(
+            total=Sum("cout")
+        )["total"] or 0
+        contexte["immobilisation_ouverte"] = self.object.immobilisations.filter(
+            fin__isnull=True
+        ).first()
+        contexte["documents_reglementaires"] = self.object.documents_reglementaires.all()
         contexte["today"] = localdate()
         return contexte
 
@@ -201,6 +222,144 @@ class EntretienDeleteView(AdminRequiredMixin, DeleteView):
 
     def get_success_url(self):
         return reverse("vehicules:detail", kwargs={"pk": self.object.vehicule_id})
+
+
+class ReleveCarburantCreateView(AdminRequiredMixin, CreateView):
+    model = ReleveCarburantVehicule
+    form_class = ReleveCarburantVehiculeForm
+    template_name = "vehicules/carnet_form.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        self.vehicule = get_object_or_404(
+            Vehicule.objects.exclude(statut=Vehicule.Statut.CEDE),
+            pk=kwargs["vehicule_pk"],
+        )
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["vehicule"] = self.vehicule
+        return kwargs
+
+    def form_valid(self, form):
+        form.instance.vehicule = self.vehicule
+        form.instance.cree_par = self.request.user
+        kilometrage = form.cleaned_data["kilometrage"]
+        if kilometrage > self.vehicule.kilometrage:
+            self.vehicule.kilometrage = kilometrage
+            self.vehicule.save(update_fields=["kilometrage", "modifie_le"])
+        messages.success(self.request, "Relevé carburant enregistré.")
+        return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["vehicule"] = self.vehicule
+        context["titre"] = "Ajouter un relevé carburant / AdBlue"
+        return context
+
+    def get_success_url(self):
+        return reverse("vehicules:detail", kwargs={"pk": self.vehicule.pk})
+
+
+class ImmobilisationCreateView(AdminRequiredMixin, CreateView):
+    model = ImmobilisationVehicule
+    form_class = ImmobilisationVehiculeForm
+    template_name = "vehicules/carnet_form.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        self.vehicule = get_object_or_404(
+            Vehicule.objects.exclude(statut=Vehicule.Statut.CEDE),
+            pk=kwargs["vehicule_pk"],
+        )
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        if self.vehicule.immobilisations.filter(fin__isnull=True).exists():
+            form.add_error(
+                None, "Une immobilisation est déjà ouverte pour ce véhicule.")
+            return self.form_invalid(form)
+        form.instance.vehicule = self.vehicule
+        form.instance.cree_par = self.request.user
+        self.vehicule.statut = form.cleaned_data["nature"]
+        self.vehicule.save(update_fields=["statut", "modifie_le"])
+        messages.success(self.request, "Immobilisation déclarée.")
+        return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["vehicule"] = self.vehicule
+        context["titre"] = "Déclarer une immobilisation"
+        return context
+
+    def get_success_url(self):
+        return reverse("vehicules:detail", kwargs={"pk": self.vehicule.pk})
+
+
+class ImmobilisationClotureView(AdminRequiredMixin, UpdateView):
+    model = ImmobilisationVehicule
+    form_class = ClotureImmobilisationVehiculeForm
+    template_name = "vehicules/carnet_form.html"
+
+    def get_queryset(self):
+        return ImmobilisationVehicule.objects.filter(fin__isnull=True).select_related("vehicule")
+
+    def form_valid(self, form):
+        immobilisation = self.get_object()
+        if form.cleaned_data["fin"] < immobilisation.debut:
+            form.add_error(
+                "fin", "La date de reprise doit être postérieure au début.")
+            return self.form_invalid(form)
+        immobilisation.fin = form.cleaned_data["fin"]
+        immobilisation.save(update_fields=["fin"])
+        immobilisation.vehicule.statut = form.cleaned_data["statut_reprise"]
+        immobilisation.vehicule.save(update_fields=["statut", "modifie_le"])
+        messages.success(self.request, "Immobilisation clôturée.")
+        return redirect(self.get_success_url())
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["vehicule"] = self.object.vehicule
+        context["titre"] = "Clôturer l'immobilisation"
+        return context
+
+    def get_success_url(self):
+        return reverse("vehicules:detail", kwargs={"pk": self.object.vehicule_id})
+
+
+class DocumentReglementaireCreateView(AdminRequiredMixin, CreateView):
+    model = DocumentReglementaireVehicule
+    form_class = DocumentReglementaireVehiculeForm
+    template_name = "vehicules/carnet_form.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        self.vehicule = get_object_or_404(Vehicule, pk=kwargs["vehicule_pk"])
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        form.instance.vehicule = self.vehicule
+        form.instance.cree_par = self.request.user
+        messages.success(self.request, "Document réglementaire ajouté.")
+        return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["vehicule"] = self.vehicule
+        context["titre"] = "Ajouter un document réglementaire"
+        return context
+
+    def get_success_url(self):
+        return reverse("vehicules:detail", kwargs={"pk": self.vehicule.pk})
+
+
+class DocumentReglementaireDownloadView(AdminRequiredMixin, DetailView):
+    model = DocumentReglementaireVehicule
+
+    def get(self, request, *args, **kwargs):
+        document = self.get_object()
+        return FileResponse(
+            document.fichier.open("rb"), as_attachment=True,
+            filename=document.fichier.name.rsplit("/", 1)[-1],
+        )
 
 
 class VehiculePhotoView(AdminRequiredMixin, DetailView):

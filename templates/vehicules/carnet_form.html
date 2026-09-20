@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}{{ titre }}{% endblock %}
+{% block content %}
+<header class="page-heading"><div><p class="eyebrow mb-1">{{ vehicule }}</p><h1 class="page-title">{{ titre }}</h1></div></header>
+<form method="post" enctype="multipart/form-data" class="card form-card app-form">{% csrf_token %}{% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}<div class="card-body"><div class="row g-3">{% for field in form %}<div class="col-md-6{% if field.name == 'motif' %} col-12{% endif %}"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.errors %}<div class="invalid-feedback d-block">{{ field.errors|striptags }}</div>{% endif %}</div>{% endfor %}</div></div><div class="card-footer d-flex justify-content-end gap-2"><a class="btn btn-outline-secondary" href="{% url 'vehicules:detail' vehicule.pk %}">Annuler</a><button class="btn btn-primary" type="submit">Enregistrer</button></div></form>
+{% endblock %}

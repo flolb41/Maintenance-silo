@@ -238,3 +238,81 @@ class EntretienVehicule(models.Model):
 
     def __str__(self):
         return f"{self.vehicule.immatriculation} - {self.get_type_entretien_display()}"
+
+
+class ReleveCarburantVehicule(models.Model):
+    class Produit(models.TextChoices):
+        CARBURANT = "carburant", "Carburant"
+        ADBLUE = "adblue", "AdBlue"
+
+    vehicule = models.ForeignKey(
+        Vehicule, on_delete=models.CASCADE, related_name="releves_carburant"
+    )
+    produit = models.CharField(max_length=12, choices=Produit.choices)
+    date_releve = models.DateField(default=localdate)
+    quantite_litres = models.DecimalField(max_digits=8, decimal_places=2)
+    kilometrage = models.PositiveIntegerField()
+    cout = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True)
+    cree_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
+        related_name="releves_carburant_crees",
+    )
+    cree_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-date_releve", "-cree_le"]
+
+
+class ImmobilisationVehicule(models.Model):
+    class Nature(models.TextChoices):
+        ENTRETIEN = Vehicule.Statut.EN_ENTRETIEN, "En entretien"
+        HORS_SERVICE = Vehicule.Statut.HORS_SERVICE, "Hors service"
+
+    vehicule = models.ForeignKey(
+        Vehicule, on_delete=models.CASCADE, related_name="immobilisations"
+    )
+    nature = models.CharField(max_length=20, choices=Nature.choices)
+    debut = models.DateField(default=localdate)
+    fin = models.DateField(null=True, blank=True)
+    motif = models.TextField()
+    cree_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
+        related_name="immobilisations_vehicules_crees",
+    )
+    cree_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-debut", "-cree_le"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["vehicule"],
+                condition=models.Q(fin__isnull=True),
+                name="unique_immobilisation_ouverte_vehicule",
+            ),
+        ]
+
+
+class DocumentReglementaireVehicule(models.Model):
+    class TypeDocument(models.TextChoices):
+        ASSURANCE = "assurance", "Assurance"
+        CONTROLE_TECHNIQUE = "controle_technique", "Contrôle technique"
+        MINES = "mines", "Passage aux mines"
+
+    vehicule = models.ForeignKey(
+        Vehicule, on_delete=models.CASCADE, related_name="documents_reglementaires"
+    )
+    type_document = models.CharField(
+        max_length=20, choices=TypeDocument.choices)
+    fichier = models.FileField(
+        upload_to="vehicules/reglementaire/%Y/%m/",
+        storage=private_invoice_storage,
+    )
+    cree_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
+        related_name="documents_reglementaires_vehicules_crees",
+    )
+    cree_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["type_document", "-cree_le"]
