@@ -302,7 +302,6 @@ class CelluleSiloForm(CelluleGrainForm):
         champs_significatifs = (
             "nom",
             "marque",
-            "etat",
             "type_grain",
             "hauteur_m",
             "diametre_m",

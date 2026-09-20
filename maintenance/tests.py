@@ -710,6 +710,43 @@ class GestionSilosTests(SetupMixin):
         site = Site.objects.get(nom="Nouveau site sans silo")
         self.assertEqual(site.silos.count(), 0)
 
+    def test_site_ignore_les_cellules_vides_preaffichees(self):
+        self.client.login(username="admin_t", password="testpass123")
+        donnees = {
+            "nom": "Site sans structure",
+            "adresse": "Adresse test",
+            "actif": "on",
+            "silos-TOTAL_FORMS": "5",
+            "silos-INITIAL_FORMS": "0",
+            "silos-MIN_NUM_FORMS": "0",
+            "silos-MAX_NUM_FORMS": "1000",
+        }
+        for index in range(5):
+            prefix = f"silos-{index}-cellules"
+            donnees.update({
+                f"silos-{index}-nom": "",
+                f"silos-{index}-description": "",
+                f"{prefix}-TOTAL_FORMS": "1",
+                f"{prefix}-INITIAL_FORMS": "0",
+                f"{prefix}-MIN_NUM_FORMS": "0",
+                f"{prefix}-MAX_NUM_FORMS": "1000",
+                f"{prefix}-0-nom": "",
+                f"{prefix}-0-marque": "",
+                f"{prefix}-0-etat": CelluleGrain.Etat.EN_SERVICE,
+                f"{prefix}-0-forme": CelluleGrain.Forme.RONDE,
+                f"{prefix}-0-hauteur_m": "",
+                f"{prefix}-0-diametre_m": "",
+                f"{prefix}-0-longueur_m": "",
+                f"{prefix}-0-largeur_m": "",
+                f"{prefix}-0-nombre_toles_hauteur": "15",
+            })
+
+        response = self.client.post(reverse("site_create"), donnees)
+
+        self.assertRedirects(response, reverse("site_list"))
+        site = Site.objects.get(nom="Site sans structure")
+        self.assertEqual(site.silos.count(), 0)
+
     def test_admin_modifie_un_site_sans_silo_depuis_le_formulaire_actuel(self):
         self.client.login(username="admin_t", password="testpass123")
         site = Site.objects.create(nom="Site sans silo", actif=True)
