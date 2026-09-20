@@ -1149,7 +1149,9 @@ class FactureForm(forms.ModelForm):
         preventive = cleaned.get("preventive")
         if not panne and not preventive:
             self.add_error(
-                "panne", "Sélectionnez une panne ou une préventive.")
+                "panne",
+                "Chaque facture doit être reliée à une panne ou une préventive.",
+            )
         elif panne and preventive:
             self.add_error(
                 "preventive",
