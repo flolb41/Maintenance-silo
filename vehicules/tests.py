@@ -305,14 +305,14 @@ class VehiculeWorkflowTests(TestCase):
         self.assertEqual(
             self.client.get(reverse(
                 "vehicules:rapport_vgp", args=[self.vehicule.pk]
-            )).status_code,
+            ), secure=True).status_code,
             403,
         )
         self.client.login(username="admin_vehicules", password="testpass123")
         self.assertEqual(
             self.client.get(reverse(
                 "vehicules:rapport_vgp", args=[self.vehicule.pk]
-            )).status_code,
+            ), secure=True).status_code,
             200,
         )
 
