@@ -2543,7 +2543,7 @@ class FactureTests(SetupMixin):
             "site": self.site1.pk,
             "start_date": "2026-08-31",
             "end_date": "2026-08-01",
-        })
+        }, secure=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, facture_site_1.numero)
