@@ -29,6 +29,8 @@ from maintenance.models import (
     Facture,
     HistoriquePreventive,
     MaintenancePreventive,
+    PieceDetachee,
+    PiecePanne,
     Notification,
     Panne,
     PanneMedia,
@@ -108,6 +110,28 @@ class SetupMixin(TestCase):
                                self.site2])  # autre site
 
         self.client = Client()
+
+
+class PiecePanneTests(SetupMixin):
+    def test_reservation_consommation_et_restitution_piece(self):
+        panne = Panne.objects.create(site=self.site1, signale_par=self.silo, affecte_a=self.maintenance,
+                                     titre="Panne avec pièce", description="Test", statut=Panne.STATUT_EN_COURS)
+        piece = PieceDetachee.objects.create(
+            site=self.site1, reference="TEST-001", nom="Pièce de test", stock=3, seuil_alerte=1)
+        self.client.login(username="maint_t", password="testpass123")
+        response = self.client.post(reverse("panne_reserver_piece", args=[panne.pk]), {
+                                    "piece": piece.pk, "quantite": 2, "commentaire": "Réparation"}, secure=True)
+        self.assertEqual(response.status_code, 302)
+        piece.refresh_from_db()
+        self.assertEqual(piece.stock, 1)
+        reservation = PiecePanne.objects.get(panne=panne)
+        response = self.client.post(reverse("panne_consomer_piece", args=[
+                                    panne.pk, reservation.pk]), secure=True)
+        self.assertEqual(response.status_code, 302)
+        piece.refresh_from_db()
+        self.assertEqual(piece.stock, 1)
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.statut, PiecePanne.Statut.CONSOMMEE)
 
 
 # ===========================================================================

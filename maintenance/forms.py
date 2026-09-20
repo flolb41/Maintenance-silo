@@ -25,6 +25,7 @@ from .models import (
     Equipement,
     MouvementPiece,
     PieceDetachee,
+    PiecePanne,
     Facture,
     MaintenancePreventive,
     Panne,
@@ -585,6 +586,22 @@ class MouvementPieceForm(forms.ModelForm):
             "quantite": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
             "commentaire": forms.TextInput(attrs={"class": "form-control"}),
         }
+
+
+class PiecePanneForm(forms.Form):
+    piece = forms.ModelChoiceField(queryset=PieceDetachee.objects.none(
+    ), widget=forms.Select(attrs={"class": "form-select"}))
+    quantite = forms.IntegerField(min_value=1, widget=forms.NumberInput(
+        attrs={"class": "form-control", "min": 1}))
+    commentaire = forms.CharField(
+        required=False, widget=forms.TextInput(attrs={"class": "form-control"}))
+
+    def __init__(self, *args, panne=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if panne is not None:
+            self.fields["piece"].queryset = PieceDetachee.objects.filter(
+                site=panne.site, actif=True
+            ).order_by("nom")
 
 
 class PanneForm(forms.ModelForm):

@@ -13,7 +13,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Count, Prefetch, Q, Sum
+from django.db.models import Count, F, Prefetch, Q, Sum
 from django.db.models.deletion import ProtectedError
 from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -53,6 +53,7 @@ from .forms import (
     EquipementForm,
     MouvementPieceForm,
     PieceDetacheeForm,
+    PiecePanneForm,
     FactureForm,
     FacturePdfUploadForm,
     MaintenancePreventiveForm,
@@ -90,6 +91,7 @@ from .models import (
     Equipement,
     MouvementPiece,
     PieceDetachee,
+    PiecePanne,
     Facture,
     HistoriquePanne,
     HistoriquePreventive,
@@ -2017,7 +2019,93 @@ class PanneDetailView(LoginRequiredMixin, DetailView):
             ctx['total_temps_minutes'] = panne.total_temps_minutes
             ctx['cout_total_intervention'] = panne.cout_total_intervention
             ctx['cout_total_global'] = panne.cout_total_global
+            ctx['pieces_panne'] = panne.pieces.select_related(
+                "piece", "reservee_par")
+            ctx['piece_panne_form'] = PiecePanneForm(panne=panne)
         return ctx
+
+
+def _peut_gestion_pieces_panne(panne, user):
+    profile = Profile.objects.filter(user=user).first()
+    return bool(profile and (profile.is_admin() or (
+        profile.is_maintenance() and panne.affecte_a_id == user.id
+    )))
+
+
+@login_required
+@require_POST
+def panne_reserver_piece(request, pk):
+    panne = get_object_or_404(Panne, pk=pk)
+    if not _peut_gestion_pieces_panne(panne, request.user):
+        raise PermissionDenied
+    if panne.statut in {Panne.STATUT_ARCHIVEE, Panne.STATUT_ANNULEE, Panne.STATUT_TERMINEE}:
+        messages.error(
+            request, "Impossible de réserver une pièce sur une panne clôturée.")
+        return redirect("panne_detail", pk=pk)
+    form = PiecePanneForm(request.POST, panne=panne)
+    if form.is_valid():
+        piece = form.cleaned_data["piece"]
+        quantite = form.cleaned_data["quantite"]
+        with transaction.atomic():
+            debitee = PieceDetachee.objects.filter(
+                pk=piece.pk, site=panne.site, actif=True, stock__gte=quantite
+            ).update(stock=F("stock") - quantite)
+            if debitee:
+                PiecePanne.objects.create(
+                    panne=panne, piece=piece, quantite=quantite,
+                    commentaire=form.cleaned_data["commentaire"],
+                    reservee_par=request.user,
+                )
+                messages.success(request, "Pièce réservée pour cette panne.")
+            else:
+                form.add_error(
+                    "quantite", "Stock insuffisant pour cette réservation.")
+    if form.errors:
+        messages.error(request, form.errors.as_text())
+    return redirect("panne_detail", pk=pk)
+
+
+@login_required
+@require_POST
+def panne_consomer_piece(request, pk, piece_panne_pk):
+    panne = get_object_or_404(Panne, pk=pk)
+    if not _peut_gestion_pieces_panne(panne, request.user):
+        raise PermissionDenied
+    reservation = get_object_or_404(PiecePanne, pk=piece_panne_pk, panne=panne)
+    if reservation.statut != PiecePanne.Statut.RESERVEE:
+        messages.error(
+            request, "Seule une pièce réservée peut être consommée.")
+    else:
+        reservation.statut = PiecePanne.Statut.CONSOMMEE
+        reservation.consommee_par = request.user
+        reservation.consommee_le = timezone.now()
+        reservation.save(
+            update_fields=["statut", "consommee_par", "consommee_le"])
+        messages.success(request, "Pièce marquée comme consommée.")
+    return redirect("panne_detail", pk=pk)
+
+
+@login_required
+@require_POST
+def panne_restituer_piece(request, pk, piece_panne_pk):
+    panne = get_object_or_404(Panne, pk=pk)
+    if not _peut_gestion_pieces_panne(panne, request.user):
+        raise PermissionDenied
+    reservation = get_object_or_404(PiecePanne, pk=piece_panne_pk, panne=panne)
+    if reservation.statut != PiecePanne.Statut.RESERVEE:
+        messages.error(
+            request, "Seule une pièce réservée peut être restituée.")
+    else:
+        with transaction.atomic():
+            PieceDetachee.objects.filter(pk=reservation.piece_id).update(
+                stock=F("stock") + reservation.quantite)
+            reservation.statut = PiecePanne.Statut.RESTITUEE
+            reservation.restituee_par = request.user
+            reservation.restituee_le = timezone.now()
+            reservation.save(
+                update_fields=["statut", "restituee_par", "restituee_le"])
+        messages.success(request, "Pièce restituée au magasin.")
+    return redirect("panne_detail", pk=pk)
 
 
 @login_required

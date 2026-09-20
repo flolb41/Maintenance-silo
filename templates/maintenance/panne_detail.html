@@ -229,6 +229,16 @@
         </div>
         {% endif %}
 
+        {% if piece_panne_form %}
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center"><span><i class="bi bi-boxes me-2"></i>Pièces réservées</span><span class="badge text-bg-light border">{{ pieces_panne|length }}</span></div>
+            <div class="card-body">
+                <form method="post" action="{% url 'panne_reserver_piece' panne.pk %}" class="row g-2 align-items-end mb-3">{% csrf_token %}<div class="col-md-6"><label class="form-label" for="{{ piece_panne_form.piece.id_for_label }}">Pièce du magasin</label>{{ piece_panne_form.piece }}</div><div class="col-md-2"><label class="form-label" for="{{ piece_panne_form.quantite.id_for_label }}">Quantité</label>{{ piece_panne_form.quantite }}</div><div class="col-md-3"><label class="form-label" for="{{ piece_panne_form.commentaire.id_for_label }}">Commentaire</label>{{ piece_panne_form.commentaire }}</div><div class="col-md-1"><button class="btn btn-primary w-100" type="submit" aria-label="Réserver la pièce"><i class="bi bi-plus-lg"></i></button></div></form>
+                <div class="list-group list-group-flush">{% for reservation in pieces_panne %}<div class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2"><span><strong>{{ reservation.piece.nom }}</strong><small class="d-block text-muted">{{ reservation.quantite }} unité{{ reservation.quantite|pluralize }} · stock actuel {{ reservation.piece.stock }} · {{ reservation.get_statut_display }}</small></span><span class="action-group">{% if reservation.statut == 'reservee' %}<form method="post" action="{% url 'panne_consomer_piece' panne.pk reservation.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-success" type="submit">Consommer</button></form><form method="post" action="{% url 'panne_restituer_piece' panne.pk reservation.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary" type="submit">Restituer</button></form>{% endif %}</span></div>{% empty %}<div class="list-group-item text-muted">Aucune pièce réservée pour cette panne.</div>{% endfor %}</div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Médias terrain -->
         <div class="card mb-3">
             <div class="card-header d-flex justify-content-between align-items-center">

@@ -687,6 +687,34 @@ class MouvementPiece(models.Model):
         ordering = ["-creee_le"]
 
 
+class PiecePanne(models.Model):
+    class Statut(models.TextChoices):
+        RESERVEE = "reservee", "Réservée"
+        CONSOMMEE = "consommee", "Consommée"
+        RESTITUEE = "restituee", "Restituée"
+
+    panne = models.ForeignKey(
+        "Panne", on_delete=models.PROTECT, related_name="pieces")
+    piece = models.ForeignKey(
+        PieceDetachee, on_delete=models.PROTECT, related_name="reservations_pannes")
+    quantite = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    statut = models.CharField(
+        max_length=12, choices=Statut.choices, default=Statut.RESERVEE)
+    commentaire = models.CharField(max_length=255, blank=True)
+    reservee_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="pieces_reservees")
+    reservee_le = models.DateTimeField(auto_now_add=True)
+    consommee_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="pieces_consommees")
+    consommee_le = models.DateTimeField(null=True, blank=True)
+    restituee_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="pieces_restituees")
+    restituee_le = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-reservee_le"]
+
+
 # ---------------------------------------------------------------------------
 # Pannes
 # ---------------------------------------------------------------------------
