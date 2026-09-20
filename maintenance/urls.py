@@ -121,6 +121,8 @@ urlpatterns = [
          views.preventive_demarrer, name="preventive_demarrer"),
     path("preventives/<int:pk>/terminer/",
          views.preventive_terminer, name="preventive_terminer"),
+    path("preventives/<int:pk>/checklist/<int:element_pk>/cocher/",
+         views.preventive_cocher_checklist, name="preventive_cocher_checklist"),
     path("preventives/medias/<int:pk>/telecharger/",
          views.preventive_media_telecharger,
          name="preventive_media_telecharger"),

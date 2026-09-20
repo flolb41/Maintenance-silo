@@ -1167,6 +1167,56 @@ class PreventiveMedia(OptimizedMediaMixin, models.Model):
         return f"Média préventive #{self.preventive_id} – {self.nom_original}"
 
 
+class ChecklistModele(models.Model):
+    nom = models.CharField(max_length=150, unique=True)
+    description = models.TextField(blank=True)
+    actif = models.BooleanField(default=True)
+    cree_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    cree_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["nom"]
+
+    def __str__(self):
+        return self.nom
+
+
+class ChecklistModeleElement(models.Model):
+    modele = models.ForeignKey(
+        ChecklistModele, on_delete=models.CASCADE, related_name="elements")
+    ordre = models.PositiveSmallIntegerField(default=1)
+    libelle = models.CharField(max_length=255)
+    obligatoire = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["ordre", "pk"]
+
+
+class ChecklistPreventive(models.Model):
+    preventive = models.OneToOneField(
+        MaintenancePreventive, on_delete=models.CASCADE, related_name="checklist")
+    modele_source = models.ForeignKey(
+        ChecklistModele, on_delete=models.SET_NULL, null=True, blank=True)
+    nom = models.CharField(max_length=150)
+    affectee_le = models.DateTimeField(auto_now_add=True)
+
+
+class ChecklistPreventiveElement(models.Model):
+    checklist = models.ForeignKey(
+        ChecklistPreventive, on_delete=models.CASCADE, related_name="elements")
+    ordre = models.PositiveSmallIntegerField(default=1)
+    libelle = models.CharField(max_length=255)
+    obligatoire = models.BooleanField(default=True)
+    coche = models.BooleanField(default=False)
+    coche_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    coche_le = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["ordre", "pk"]
+
+
 # ---------------------------------------------------------------------------
 # Factures
 # ---------------------------------------------------------------------------

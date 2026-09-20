@@ -22,6 +22,7 @@ except ImportError:  # pragma: no cover - module facultatif
 from .models import (
     CelluleGrain,
     BudgetAnnuelSite,
+    ChecklistModele,
     Equipement,
     MouvementPiece,
     PieceDetachee,
@@ -894,6 +895,13 @@ class PreventiveValiderForm(forms.Form):
 
 
 class MaintenancePreventiveForm(forms.ModelForm):
+    checklist_modele = forms.ModelChoiceField(
+        queryset=ChecklistModele.objects.none(),
+        required=False,
+        label="Checklist terrain",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+
     class Meta:
         model = MaintenancePreventive
         fields = ["site", "equipement", "affecte_a",
@@ -942,6 +950,10 @@ class MaintenancePreventiveForm(forms.ModelForm):
             self.fields["recurrence_active"].initial = True
         self.fields["periodicite"].required = False
         self.fields["recurrence_jusquau"].required = False
+        self.fields["checklist_modele"].queryset = ChecklistModele.objects.filter(
+            actif=True)
+        if self.instance.pk and hasattr(self.instance, "checklist"):
+            self.fields["checklist_modele"].initial = self.instance.checklist.modele_source
         if user is not None:
             profile = Profile.objects.filter(user=user).first()
             sites = (

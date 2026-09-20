@@ -72,6 +72,11 @@
                         {{ form.periodicite }}
                         {% if form.periodicite.errors %}<div class="invalid-feedback d-block">{{ form.periodicite.errors|striptags }}</div>{% endif %}
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="{{ form.checklist_modele.id_for_label }}">Checklist terrain</label>
+                        {{ form.checklist_modele }}
+                        <div class="form-text">Les points sont copiés sur cette intervention et restent figés.</div>
+                    </div>
                     <div class="form-check mb-3">
                         {{ form.recurrence_active }}
                         <label class="form-check-label fw-semibold" for="{{ form.recurrence_active.id_for_label }}">Génération automatique active</label>

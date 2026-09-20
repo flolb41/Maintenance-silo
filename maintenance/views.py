@@ -88,6 +88,8 @@ from .mixins import (
 from .models import (
     CelluleGrain,
     BudgetAnnuelSite,
+    ChecklistPreventive,
+    ChecklistPreventiveElement,
     Equipement,
     MouvementPiece,
     PieceDetachee,
@@ -149,6 +151,27 @@ def _maintenance_peut_valider_preventive(user, preventive):
     return _pannes_actives_affectees(user).filter(
         equipement_id=preventive.equipement_id
     ).exists()
+
+
+def _appliquer_checklist_preventive(preventive, modele):
+    if not modele:
+        if hasattr(preventive, "checklist"):
+            preventive.checklist.delete()
+        return
+    checklist, _ = ChecklistPreventive.objects.update_or_create(
+        preventive=preventive,
+        defaults={"modele_source": modele, "nom": modele.nom},
+    )
+    checklist.elements.all().delete()
+    ChecklistPreventiveElement.objects.bulk_create([
+        ChecklistPreventiveElement(
+            checklist=checklist,
+            ordre=element.ordre,
+            libelle=element.libelle,
+            obligatoire=element.obligatoire,
+        )
+        for element in modele.elements.all()
+    ])
 
 
 def _ajouter_stock_resume(resumes, cle, libelle, cellule, dernier_releve):
@@ -2886,6 +2909,7 @@ class PreventiveDetailView(LoginRequiredMixin, DetailView):
         ctx['historique'] = HistoriquePreventive.objects.filter(
             preventive=preventive)
         ctx['medias'] = PreventiveMedia.objects.filter(preventive=preventive)
+        ctx['checklist'] = getattr(preventive, "checklist", None)
         ctx['factures'] = (
             Facture.objects.filter(preventive=preventive)
             if profile and profile.is_admin()
@@ -2919,7 +2943,12 @@ class PreventiveCreateView(AdminRequiredMixin, CreateView):
     def form_valid(self, form):
         form.instance.created_by = self.request.user
         messages.success(self.request, 'Maintenance préventive planifiée.')
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        _appliquer_checklist_preventive(
+            self.object,
+            form.cleaned_data.get("checklist_modele"),
+        )
+        return response
 
     def get_success_url(self):
         return reverse('preventive_detail', kwargs={'pk': self.object.pk})
@@ -2938,6 +2967,18 @@ class PreventiveUpdateView(AdminRequiredMixin, UpdateView):
 
     def get_success_url(self):
         return reverse('preventive_detail', kwargs={'pk': self.object.pk})
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        if self.object.statut in {
+            MaintenancePreventive.STATUT_BROUILLON,
+            MaintenancePreventive.STATUT_REJETEE,
+        }:
+            _appliquer_checklist_preventive(
+                self.object,
+                form.cleaned_data.get("checklist_modele"),
+            )
+        return response
 
 
 @login_required
@@ -3055,6 +3096,13 @@ def preventive_terminer(request, pk):
             request.FILES,
             instance=preventive,
         )
+        checklist_incomplete = hasattr(preventive, "checklist") and preventive.checklist.elements.filter(
+            obligatoire=True,
+            coche=False,
+        ).exists()
+        if checklist_incomplete:
+            form.add_error(
+                None, "Tous les points obligatoires de la checklist doivent être cochés.")
         if form.is_valid():
             retour = form.cleaned_data['retour_intervention']
             preventive.retour_intervention = retour
@@ -3077,6 +3125,24 @@ def preventive_terminer(request, pk):
         'form': form,
         'preventive': preventive,
     })
+
+
+@login_required
+@require_POST
+def preventive_cocher_checklist(request, pk, element_pk):
+    preventive = get_object_or_404(MaintenancePreventive, pk=pk)
+    if preventive.affecte_a_id != request.user.id or preventive.statut != MaintenancePreventive.STATUT_EN_COURS:
+        raise PermissionDenied
+    element = get_object_or_404(
+        ChecklistPreventiveElement,
+        pk=element_pk,
+        checklist__preventive=preventive,
+    )
+    element.coche = not element.coche
+    element.coche_par = request.user if element.coche else None
+    element.coche_le = timezone.now() if element.coche else None
+    element.save(update_fields=["coche", "coche_par", "coche_le"])
+    return redirect("preventive_detail", pk=pk)
 
 
 @login_required

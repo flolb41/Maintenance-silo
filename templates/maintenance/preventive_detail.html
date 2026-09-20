@@ -32,6 +32,23 @@
             </div>
         </div>
 
+        {% if checklist %}
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-list-check me-2 text-primary"></i>{{ checklist.nom }}</div>
+            <div class="list-group list-group-flush">
+                {% for element in checklist.elements.all %}
+                <div class="list-group-item d-flex align-items-center gap-2">
+                    {% if can_execute_preventive and preventive.statut == 'en_cours' %}
+                    <form method="post" action="{% url 'preventive_cocher_checklist' preventive.pk element.pk %}">{% csrf_token %}<button class="btn btn-sm {% if element.coche %}btn-success{% else %}btn-outline-secondary{% endif %}" type="submit" aria-label="Cocher {{ element.libelle }}"><i class="bi bi-{% if element.coche %}check-lg{% else %}square{% endif %}"></i></button></form>
+                    {% else %}<i class="bi bi-{% if element.coche %}check-square-fill text-success{% else %}square{% endif %}"></i>{% endif %}
+                    <span class="flex-grow-1{% if element.coche %} text-decoration-line-through text-muted{% endif %}">{{ element.libelle }}{% if element.obligatoire %}<span class="text-danger"> *</span>{% endif %}</span>
+                    {% if element.coche_le %}<small class="text-muted">{{ element.coche_le|date:"d/m H:i" }}</small>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
     </div>
     <div class="col-xl-4">
         {% if can_manage_preventive or can_validate_preventive or can_complete_preventive %}
