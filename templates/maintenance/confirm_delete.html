@@ -4,6 +4,6 @@
 <header class="page-heading"><div><p class="eyebrow mb-1">Zone sensible</p><h1 class="page-title">Confirmer la suppression</h1><p class="page-subtitle">Vérifiez l’élément concerné avant de poursuivre.</p></div></header>
 <div class="card form-card confirm-card">
 	<div class="card-body"><div class="confirm-message"><i class="bi bi-exclamation-triangle"></i><div><h2>Supprimer « {{ object }} » ?</h2><p>Cette action est définitive et les informations associées pourraient ne plus être accessibles.</p></div></div></div>
-	<form method="post" class="card-footer form-actions">{% csrf_token %}<a class="btn btn-outline-secondary" href="{{ request.META.HTTP_REFERER|default:'/' }}">Annuler</a><button class="btn btn-danger" type="submit"><i class="bi bi-trash me-1"></i>Supprimer définitivement</button></form>
+	<form method="post" class="card-footer form-actions">{% csrf_token %}<a class="btn btn-outline-secondary" href="{{ view.get_success_url }}">Annuler</a><button class="btn btn-danger" type="submit"><i class="bi bi-trash me-1"></i>Supprimer définitivement</button></form>
 </div>
 {% endblock %}

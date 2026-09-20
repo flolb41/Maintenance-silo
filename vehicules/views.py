@@ -28,6 +28,8 @@ class VehiculeListView(AdminRequiredMixin, ListView):
     def get_queryset(self):
         queryset = Vehicule.objects.filter(
             categorie__in=CATEGORIES_GEREES
+        ).exclude(
+            statut=Vehicule.Statut.CEDE
         ).select_related("site")
         recherche = self.request.GET.get("q", "").strip()
         if recherche:
@@ -45,7 +47,9 @@ class VehiculeListView(AdminRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         contexte = super().get_context_data(**kwargs)
-        parc = Vehicule.objects.filter(categorie__in=CATEGORIES_GEREES)
+        parc = Vehicule.objects.filter(
+            categorie__in=CATEGORIES_GEREES
+        ).exclude(statut=Vehicule.Statut.CEDE)
         contexte.update({
             "total_vehicules": parc.count(),
             "total_pl": parc.filter(
