@@ -35,8 +35,14 @@ jobs:
           USE_SQLITE: "true"
         run: python manage.py makemigrations --check
 
-      - name: Lancer les tests
+      - name: Lancer les tests rapides
         env:
           DJANGO_SETTINGS_MODULE: config.settings
           USE_SQLITE: "true"
-        run: python manage.py test maintenance --verbosity=2
+        run: python manage.py test maintenance vehicules --exclude-tag=ocr --verbosity=2
+
+      - name: Lancer les tests OCR
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings
+          USE_SQLITE: "true"
+        run: python manage.py test maintenance --tag=ocr --verbosity=2

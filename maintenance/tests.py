@@ -16,7 +16,7 @@ from django.contrib.auth.forms import PasswordResetForm
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
-from django.test import Client, TestCase, override_settings
+from django.test import Client, TestCase, override_settings, tag
 from django.urls import reverse
 from django.utils import timezone
 
@@ -2929,6 +2929,7 @@ Net à payer 3 374,71 EUR
         self.assertEqual(resultat["taux_tva"], Decimal("20.00"))
         self.assertEqual(resultat["montant_ttc"], Decimal("3374.71"))
 
+    @tag("ocr")
     def test_pdf_hybride_complete_le_texte_natif_insuffisant_par_ocr(self):
         class FakePage:
             def extract_text(self, **kwargs):
@@ -2960,6 +2961,7 @@ Total TTC : 1 080,00 EUR
         self.assertEqual(resultat["montant_ttc"], Decimal("1080.00"))
         self.assertEqual(resultat["_detection"]["methode"], "pdf_texte_et_ocr")
 
+    @tag("ocr")
     def test_pdf_ocr_cible_la_derniere_page_pour_les_totaux(self):
         class FakePage:
             def __init__(self, text):
@@ -2999,6 +3001,7 @@ Net à payer : 2 400,00 EUR
         self.assertEqual(resultat["numero"], "DM-2026-105")
         self.assertEqual(resultat["montant_ttc"], Decimal("2400.00"))
 
+    @tag("ocr")
     def test_ocr_image_choisit_la_lecture_la_plus_riche(self):
         def ocr_data(lines):
             data = {
@@ -3038,6 +3041,7 @@ Net à payer : 2 400,00 EUR
         self.assertEqual(resultat["montant_ttc"], Decimal("120.00"))
         self.assertEqual(resultat["_detection"]["methode"], "ocr_image")
 
+    @tag("ocr")
     def test_ocr_image_priorise_le_fournisseur_en_haut_a_gauche(self):
         lines = [
             (1, 800, "AXEREAL SERVICES SAS"),
