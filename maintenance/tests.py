@@ -751,7 +751,11 @@ class GestionSilosTests(SetupMixin):
             secure=True,
         )
 
-        self.assertRedirects(response, reverse("site_list"))
+        self.assertRedirects(
+            response,
+            reverse("site_list"),
+            fetch_redirect_response=False,
+        )
         site = Site.objects.get(nom="Site sans structure")
         self.assertEqual(site.silos.count(), 0)
 
