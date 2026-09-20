@@ -1,4 +1,5 @@
-from datetime import timedelta
+from calendar import monthrange
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.conf import settings
@@ -84,6 +85,16 @@ class Vehicule(OptimizedMediaMixin, models.Model):
         blank=True,
         verbose_name="Rapport VGP (PDF)",
     )
+    periodicite_revision_mois = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Périodicité révision (mois)",
+    )
+    periodicite_revision_km = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Périodicité révision (km)",
+    )
     prochain_entretien_date = models.DateField(null=True, blank=True)
     prochain_entretien_km = models.PositiveIntegerField(null=True, blank=True)
     photo = models.ImageField(upload_to="vehicules/%Y/%m/", blank=True)
@@ -110,6 +121,59 @@ class Vehicule(OptimizedMediaMixin, models.Model):
     def __str__(self):
         identifiant = f"{self.immatriculation} - " if self.immatriculation else ""
         return f"{identifiant}{self.marque} {self.modele}"
+
+    @staticmethod
+    def _ajouter_mois(date_reference, nombre_mois):
+        mois_total = date_reference.month - 1 + nombre_mois
+        annee = date_reference.year + mois_total // 12
+        mois = mois_total % 12 + 1
+        jour = min(date_reference.day, monthrange(annee, mois)[1])
+        return date(annee, mois, jour)
+
+    def planifier_prochaine_revision(self, date_revision, kilometrage_revision):
+        if self.periodicite_revision_mois:
+            self.prochain_entretien_date = self._ajouter_mois(
+                date_revision,
+                self.periodicite_revision_mois,
+            )
+        if self.periodicite_revision_km:
+            self.prochain_entretien_km = (
+                kilometrage_revision + self.periodicite_revision_km
+            )
+
+    @property
+    def prevision_revision(self):
+        aujourd_hui = localdate()
+        jours_restants = (
+            (self.prochain_entretien_date - aujourd_hui).days
+            if self.prochain_entretien_date
+            else None
+        )
+        kilometres_restants = (
+            self.prochain_entretien_km - self.kilometrage
+            if self.prochain_entretien_km is not None
+            else None
+        )
+        if jours_restants is not None and jours_restants < 0:
+            statut, libelle = "en_retard", "Révision en retard"
+        elif kilometres_restants is not None and kilometres_restants < 0:
+            statut, libelle = "en_retard", "Révision kilométrique dépassée"
+        elif (
+            jours_restants is not None and jours_restants <= 30
+        ) or (
+            kilometres_restants is not None and kilometres_restants <= 1_000
+        ):
+            statut, libelle = "proche", "Révision à prévoir"
+        elif jours_restants is None and kilometres_restants is None:
+            statut, libelle = "non_planifiee", "Révision non planifiée"
+        else:
+            statut, libelle = "a_venir", "Révision planifiée"
+        return {
+            "statut": statut,
+            "libelle": libelle,
+            "jours_restants": jours_restants,
+            "kilometres_restants": kilometres_restants,
+        }
 
     @property
     def alerte_echeance(self):

@@ -158,9 +158,21 @@ class EntretienCreateView(AdminRequiredMixin, CreateView):
     def form_valid(self, form):
         form.instance.vehicule = self.vehicule
         form.instance.cree_par = self.request.user
+        mise_a_jour = []
         if form.cleaned_data["kilometrage"] > self.vehicule.kilometrage:
             self.vehicule.kilometrage = form.cleaned_data["kilometrage"]
-            self.vehicule.save(update_fields=["kilometrage", "modifie_le"])
+            mise_a_jour.append("kilometrage")
+        if form.cleaned_data["type_entretien"] == EntretienVehicule.TypeEntretien.REVISION:
+            self.vehicule.planifier_prochaine_revision(
+                form.cleaned_data["date_entretien"],
+                form.cleaned_data["kilometrage"],
+            )
+            if self.vehicule.periodicite_revision_mois:
+                mise_a_jour.append("prochain_entretien_date")
+            if self.vehicule.periodicite_revision_km:
+                mise_a_jour.append("prochain_entretien_km")
+        if mise_a_jour:
+            self.vehicule.save(update_fields=[*mise_a_jour, "modifie_le"])
         messages.success(self.request, "Entretien enregistré.")
         return super().form_valid(form)
 

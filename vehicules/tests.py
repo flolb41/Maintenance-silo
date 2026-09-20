@@ -254,6 +254,12 @@ class VehiculeWorkflowTests(TestCase):
         optimiser.assert_called_once()
 
     def test_entretien_met_a_jour_le_kilometrage_et_le_cout(self):
+        self.vehicule.periodicite_revision_mois = 12
+        self.vehicule.periodicite_revision_km = 20_000
+        self.vehicule.save(update_fields=[
+            "periodicite_revision_mois",
+            "periodicite_revision_km",
+        ])
         self.client.login(username="admin_vehicules", password="testpass123")
 
         response = self.client.post(
@@ -266,12 +272,21 @@ class VehiculeWorkflowTests(TestCase):
                 "description": "Révision complète",
                 "cout": "850.50",
             },
+            secure=True,
         )
 
-        self.assertRedirects(response, reverse(
-            "vehicules:detail", args=[self.vehicule.pk]))
+        self.assertRedirects(
+            response,
+            reverse("vehicules:detail", args=[self.vehicule.pk]),
+            fetch_redirect_response=False,
+        )
         self.vehicule.refresh_from_db()
         self.assertEqual(self.vehicule.kilometrage, 125000)
+        self.assertEqual(
+            self.vehicule.prochain_entretien_date,
+            localdate().replace(year=localdate().year + 1),
+        )
+        self.assertEqual(self.vehicule.prochain_entretien_km, 145000)
         entretien = self.vehicule.entretiens.get()
         self.assertEqual(entretien.cout, Decimal("850.50"))
         self.assertEqual(entretien.cree_par, self.admin)
