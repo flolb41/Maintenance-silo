@@ -20,7 +20,7 @@
 
 <div class="table-shell">
     <div class="table-responsive">
-        <table class="table table-hover mb-0">
+        <table class="table table-hover mb-0 responsive-cards">
             <thead>
                 <tr>
                     <th>Titre</th>
@@ -36,22 +36,22 @@
             <tbody>
                 {% for panne in pannes %}
                 <tr>
-                    <td><a class="fw-semibold text-decoration-none" href="{% url 'panne_detail' panne.pk %}">{{ panne.titre|truncatechars:50 }}</a></td>
-                    <td>{{ panne.site.nom }}</td>
-                    <td>
+                    <td data-label="Titre"><a class="fw-semibold text-decoration-none" href="{% url 'panne_detail' panne.pk %}">{{ panne.titre|truncatechars:50 }}</a></td>
+                    <td data-label="Site">{{ panne.site.nom }}</td>
+                    <td data-label="Priorité">
                         <span class="badge status-{% if panne.priorite == 'critique' %}danger{% elif panne.priorite == 'haute' %}warning{% else %}neutral{% endif %}">
                             {{ panne.get_priorite_display }}
                         </span>
                     </td>
-                    <td>
+                    <td data-label="Statut">
                         <span class="badge status-{% if panne.statut == 'nouvelle' %}info{% elif panne.statut == 'cloturee' or panne.statut == 'resolue' %}success{% else %}neutral{% endif %}">
                             {{ panne.get_statut_display }}
                         </span>
                     </td>
-                    <td>{{ panne.declarant.get_full_name|default:panne.declarant.username }}</td>
-                    <td>{{ panne.agent_assigne.get_full_name|default:"—" }}</td>
-                    <td>{{ panne.creee_le|date:"d/m/Y H:i" }}</td>
-                    <td class="text-end"><a href="{% url 'panne_detail' panne.pk %}" class="btn btn-sm btn-outline-primary" title="Ouvrir"><i class="bi bi-arrow-right"></i></a></td>
+                    <td data-label="Déclarant">{{ panne.declarant.get_full_name|default:panne.declarant.username }}</td>
+                    <td data-label="Assigné à">{{ panne.agent_assigne.get_full_name|default:"—" }}</td>
+                    <td data-label="Date">{{ panne.creee_le|date:"d/m/Y H:i" }}</td>
+                    <td data-label="" class="text-end"><a href="{% url 'panne_detail' panne.pk %}" class="btn btn-sm btn-outline-primary" aria-label="Ouvrir la panne {{ panne.titre }}"><i class="bi bi-arrow-right"></i></a></td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="8"><div class="empty-state"><i class="bi bi-search"></i>Aucune panne ne correspond aux critères.</div></td></tr>
