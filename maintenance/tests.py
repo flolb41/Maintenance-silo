@@ -676,7 +676,11 @@ class GestionSilosTests(SetupMixin):
             "cellules-1-actif": "on",
         })
 
-        self.assertRedirects(response, reverse("site_list"))
+        self.assertRedirects(
+            response,
+            reverse("site_list"),
+            fetch_redirect_response=False,
+        )
         site = Site.objects.get(nom="Site géométrique")
         self.assertEqual(site.cellules_grain.count(), 2)
         rectangle = site.cellules_grain.get(nom="Rectangle 1")
