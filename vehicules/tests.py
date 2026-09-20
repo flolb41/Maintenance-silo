@@ -189,8 +189,14 @@ class VehiculeWorkflowTests(TestCase):
         )
         self.client.login(username="admin_vehicules", password="testpass123")
 
-        formulaire = self.client.get(reverse("vehicules:ajouter"))
-        liste = self.client.get(reverse("vehicules:liste"))
+        formulaire = self.client.get(
+            reverse("vehicules:ajouter"),
+            secure=True,
+        )
+        liste = self.client.get(
+            reverse("vehicules:liste"),
+            secure=True,
+        )
 
         self.assertIn(
             self.site, formulaire.context["form"].fields["site"].queryset)
