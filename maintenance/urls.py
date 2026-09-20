@@ -126,6 +126,10 @@ urlpatterns = [
 
     # Factures
     path("factures/", views.FactureListView.as_view(), name="facture_list"),
+    path("budgets/", views.BudgetAnnuelSiteView.as_view(),
+         name="budget_annuel_list"),
+    path("budgets/creer/", views.BudgetAnnuelSiteCreateView.as_view(),
+         name="budget_annuel_create"),
     path("factures/creer/", views.FactureCreateView.as_view(),
          name="facture_create"),
     path("factures/<int:pk>/", views.FactureDetailView.as_view(),

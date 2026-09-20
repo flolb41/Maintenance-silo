@@ -21,6 +21,7 @@ except ImportError:  # pragma: no cover - module facultatif
 
 from .models import (
     CelluleGrain,
+    BudgetAnnuelSite,
     Equipement,
     MouvementPiece,
     PieceDetachee,
@@ -211,6 +212,20 @@ class SiteForm(forms.ModelForm):
         for photo in photos:
             valider_photo(photo)
         return photos
+
+
+class BudgetAnnuelSiteForm(forms.ModelForm):
+    class Meta:
+        model = BudgetAnnuelSite
+        fields = ["site", "annee", "montant_budget_ttc", "seuil_alerte_pct"]
+        widgets = {"site": forms.Select(attrs={"class": "form-select"}), "annee": forms.NumberInput(attrs={"class": "form-control"}), "montant_budget_ttc": forms.NumberInput(
+            attrs={"class": "form-control", "min": "0.01", "step": "0.01"}), "seuil_alerte_pct": forms.NumberInput(attrs={"class": "form-control", "min": 1, "max": 100})}
+
+    def clean_montant_budget_ttc(self):
+        montant = self.cleaned_data["montant_budget_ttc"]
+        if montant <= 0:
+            raise ValidationError("Le budget doit être supérieur à zéro.")
+        return montant
 
 
 class CelluleGrainForm(forms.ModelForm):

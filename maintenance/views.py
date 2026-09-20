@@ -47,6 +47,7 @@ from vehicules.models import Vehicule
 
 from .forms import (
     CelluleGrainForm,
+    BudgetAnnuelSiteForm,
     CelluleSiloFormSet,
     CelluleSiteLegacyFormSet,
     EquipementForm,
@@ -85,6 +86,7 @@ from .mixins import (
 )
 from .models import (
     CelluleGrain,
+    BudgetAnnuelSite,
     Equipement,
     MouvementPiece,
     PieceDetachee,
@@ -111,6 +113,7 @@ from .signals import (
     notifier_affectation_panne,
     supprimer_notifications_declaration_panne,
 )
+from .services import synthese_budget_site
 
 try:
     extract_invoice_data_from_document = import_module(
@@ -2972,6 +2975,49 @@ def preventive_valider(request, pk):
 # ─────────────────────────────────────────────
 # FACTURES
 # ─────────────────────────────────────────────
+
+
+class BudgetAnnuelSiteView(AdminRequiredMixin, ListView):
+    model = BudgetAnnuelSite
+    template_name = "maintenance/budget_annuel_list.html"
+    context_object_name = "budgets"
+
+    def get_queryset(self):
+        try:
+            self.annee = int(self.request.GET.get("annee", localdate().year))
+        except (TypeError, ValueError):
+            self.annee = localdate().year
+        return BudgetAnnuelSite.objects.filter(annee=self.annee).select_related("site")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        lignes = []
+        for budget in context["budgets"]:
+            synthese = synthese_budget_site(budget.site, self.annee)
+            depense = synthese["depense"]
+            taux = depense * Decimal("100") / budget.montant_budget_ttc
+            lignes.append({"budget": budget, **synthese, "restant": budget.montant_budget_ttc - depense,
+                          "taux": taux, "alerte": taux >= budget.seuil_alerte_pct, "depassement": taux >= 100})
+        context.update({"annee": self.annee, "lignes": lignes, "sites_sans_budget": Site.objects.filter(
+            actif=True).exclude(budgets_annuels__annee=self.annee).order_by("nom")})
+        return context
+
+
+class BudgetAnnuelSiteCreateView(AdminRequiredMixin, CreateView):
+    model = BudgetAnnuelSite
+    form_class = BudgetAnnuelSiteForm
+    template_name = "maintenance/budget_annuel_form.html"
+    success_url = reverse_lazy("budget_annuel_list")
+
+    def get_initial(self):
+        initial = super().get_initial()
+        initial["annee"] = self.request.GET.get("annee", localdate().year)
+        return initial
+
+    def form_valid(self, form):
+        messages.success(self.request, "Budget annuel enregistré.")
+        return super().form_valid(form)
+
 
 class FactureListView(AdminRequiredMixin, ListView):
     model = Facture

@@ -88,6 +88,22 @@ class Site(models.Model):
         ordering = ["nom"]
 
 
+class BudgetAnnuelSite(models.Model):
+    site = models.ForeignKey(
+        Site, on_delete=models.PROTECT, related_name="budgets_annuels")
+    annee = models.PositiveSmallIntegerField()
+    montant_budget_ttc = models.DecimalField(max_digits=12, decimal_places=2)
+    seuil_alerte_pct = models.PositiveSmallIntegerField(default=80)
+
+    class Meta:
+        ordering = ["-annee", "site__nom"]
+        constraints = [models.UniqueConstraint(
+            fields=["site", "annee"], name="unique_budget_annuel_site")]
+
+    def __str__(self):
+        return f"Budget {self.site} {self.annee}"
+
+
 class TypeGrain(models.Model):
     nom = models.CharField(max_length=100, unique=True)
     poids_specifique_moyen = models.DecimalField(

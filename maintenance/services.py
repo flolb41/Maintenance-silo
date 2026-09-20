@@ -3,8 +3,25 @@ Service centralisé pour créer les notifications persistantes
 et diffuser les événements WebSocket.
 """
 from asgiref.sync import async_to_sync
+from decimal import Decimal
 
-from .models import Notification
+from django.db.models import Q, Sum
+
+from .models import Facture, Notification, PanneTempsIntervention
+
+
+def synthese_budget_site(site, annee):
+    factures = Facture.objects.filter(statut=Facture.STATUT_VALIDE, date_facture__year=annee).filter(
+        Q(panne__site=site) | Q(preventive__site=site) | Q(
+            preventive__equipement__site=site)
+    )
+    facture_pannes = factures.filter(panne__isnull=False).aggregate(
+        total=Sum("montant_ttc"))["total"] or Decimal("0")
+    facture_preventives = factures.filter(panne__isnull=True).aggregate(
+        total=Sum("montant_ttc"))["total"] or Decimal("0")
+    main_oeuvre = PanneTempsIntervention.objects.filter(
+        panne__site=site, validee=True, date_intervention__year=annee).aggregate(total=Sum("montant"))["total"] or Decimal("0")
+    return {"facture_pannes": facture_pannes, "facture_preventives": facture_preventives, "main_oeuvre": main_oeuvre, "depense": facture_pannes + facture_preventives + main_oeuvre}
 
 
 def _diffuser_ws(utilisateur_id: int, event_type: str, data: dict):
