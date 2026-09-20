@@ -77,6 +77,7 @@ from .forms import (
 )
 from .mixins import (
     AdminRequiredMixin,
+    AdminSiloMaintenanceRequiredMixin,
     AdminSiloRequiredMixin,
     MaintenanceRequiredMixin,
     SiloRequiredMixin,
@@ -2491,7 +2492,7 @@ def panne_ajouter_factures(request, pk):
 # MAINTENANCES PRÉVENTIVES
 # ─────────────────────────────────────────────
 
-class PreventiveListView(AdminSiloRequiredMixin, ListView):
+class PreventiveListView(AdminSiloMaintenanceRequiredMixin, ListView):
     model = MaintenancePreventive
     template_name = 'maintenance/preventive_liste.html'
     context_object_name = 'preventives'
@@ -2509,7 +2510,11 @@ class PreventiveListView(AdminSiloRequiredMixin, ListView):
                 statut=MaintenancePreventive.Statut.ARCHIVEE,
             )
         elif profile and profile.is_maintenance():
-            qs = qs.filter(created_by=self.request.user)
+            qs = qs.filter(
+                equipement_id__in=_pannes_actives_affectees(
+                    self.request.user
+                ).exclude(equipement__isnull=True).values("equipement_id")
+            ).distinct()
 
         statut = self.request.GET.get('statut')
         periodicite = self.request.GET.get('periodicite')
@@ -2543,7 +2548,7 @@ class PreventiveListView(AdminSiloRequiredMixin, ListView):
         return ctx
 
 
-class PreventiveCalendarView(AdminSiloRequiredMixin, TemplateView):
+class PreventiveCalendarView(AdminSiloMaintenanceRequiredMixin, TemplateView):
     template_name = 'maintenance/preventive_calendrier.html'
 
     def get_context_data(self, **kwargs):
@@ -2581,6 +2586,7 @@ class PreventiveCalendarView(AdminSiloRequiredMixin, TemplateView):
             }
             for preventive in preventives
         ]
+        profile = Profile.objects.filter(user=self.request.user).first()
         for vehicle in vehicles:
             for field_name, label in (
                 ('date_assurance', 'Assurance'),
@@ -2596,7 +2602,10 @@ class PreventiveCalendarView(AdminSiloRequiredMixin, TemplateView):
                         'title': f'{label} · {vehicle}',
                         'kind': 'vehicule',
                         'label': vehicle.site.nom,
-                        'url': reverse('vehicules:detail', args=[vehicle.pk]),
+                        'url': (
+                            reverse('vehicules:detail', args=[vehicle.pk])
+                            if profile and profile.is_admin() else None
+                        ),
                     })
         events.sort(key=lambda event: (
             event['date'], event['kind'], event['title']))
@@ -3062,8 +3071,21 @@ class FactureCreateView(AdminRequiredMixin, CreateView):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['user'] = self.request.user
-        kwargs['panne'] = self.request.GET.get('panne')
-        kwargs['preventive'] = self.request.GET.get('preventive')
+        sites = get_sites_utilisateur(self.request.user)
+        panne_id = self.request.GET.get('panne')
+        preventive_id = self.request.GET.get('preventive')
+        kwargs['panne'] = (
+            get_object_or_404(Panne, pk=panne_id, site__in=sites)
+            if panne_id else None
+        )
+        kwargs['preventive'] = (
+            get_object_or_404(
+                MaintenancePreventive.objects.filter(
+                    Q(site__in=sites) | Q(equipement__site__in=sites)
+                ).distinct(),
+                pk=preventive_id,
+            ) if preventive_id else None
+        )
         return kwargs
 
     def get_initial(self):
@@ -3080,6 +3102,13 @@ class FactureCreateView(AdminRequiredMixin, CreateView):
         form.instance.created_by = self.request.user
         messages.success(self.request, 'Facture créée.')
         return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        form = context.get("form")
+        context["panne"] = getattr(form, "panne_imposee", None)
+        context["preventive"] = getattr(form, "preventive_imposee", None)
+        return context
 
     def get_success_url(self):
         return reverse('facture_detail', kwargs={'pk': self.object.pk})

@@ -2,16 +2,16 @@
 {% block title %}{% if form.instance.pk %}Vérifier la facture{% else %}Analyser une facture{% endif %}{% endblock %}
 {% block content %}
 <header class="page-heading">
-    <div><p class="eyebrow mb-1">Suivi financier</p><h1 class="page-title">{% if form.instance.pk %}Vérifier la facture{% else %}Analyser une facture{% endif %}</h1><p class="page-subtitle">Importez le document, rattachez-le à une panne puis contrôlez les informations détectées.</p></div>
+    <div><p class="eyebrow mb-1">Suivi financier</p><h1 class="page-title">{% if form.instance.pk %}Vérifier la facture{% else %}Analyser une facture{% endif %}</h1><p class="page-subtitle">Importez le document, rattachez-le à une intervention puis contrôlez les informations détectées.</p></div>
 </header>
 <form method="post" enctype="multipart/form-data" class="invoice-detection-form" novalidate>
     {% csrf_token %}
     {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
     <section class="card mb-3">
-        <div class="card-header d-flex align-items-center gap-2"><span class="invoice-step">1</span><span>Document et panne concernée</span></div>
+        <div class="card-header d-flex align-items-center gap-2"><span class="invoice-step">1</span><span>Document et intervention concernée</span></div>
         <div class="card-body">
             <div class="invoice-upload-zone"><i class="bi bi-file-earmark-arrow-up"></i><div class="flex-grow-1"><label class="form-label fw-semibold" for="{{ form.fichier_upload.id_for_label }}">Fichier à détecter</label>{{ form.fichier_upload }}<div class="form-text">PDF, photo, Word ou Excel. Les données lisibles seront extraites automatiquement.</div>{% if form.fichier_upload.errors %}<div class="invalid-feedback d-block">{{ form.fichier_upload.errors|striptags }}</div>{% endif %}{% if form.instance.fichier %}<div class="mt-2 small"><i class="bi bi-paperclip me-1"></i>Document actuel : {{ form.instance.nom_fichier_original|default:form.instance.fichier.name }}</div>{% endif %}</div></div>
-            {% if panne %}<div class="invoice-incident mt-3"><i class="bi bi-exclamation-diamond"></i><div><span>Panne associée</span><strong>{{ panne.titre }}</strong><small>{{ panne.site.nom }}</small></div></div>{% else %}<div class="mt-3"><label class="form-label fw-semibold" for="{{ form.panne.id_for_label }}">Panne associée <span class="text-danger">*</span></label>{{ form.panne }}{% if form.panne.errors %}<div class="invalid-feedback d-block">{{ form.panne.errors|striptags }}</div>{% endif %}</div>{% endif %}
+            {% if panne %}<div class="invoice-incident mt-3"><i class="bi bi-exclamation-diamond"></i><div><span>Panne associée</span><strong>{{ panne.titre }}</strong><small>{{ panne.site.nom }}</small></div></div>{% elif preventive %}<div class="invoice-incident mt-3"><i class="bi bi-calendar-check"></i><div><span>Préventive associée</span><strong>{{ preventive.titre }}</strong><small>{{ preventive.site.nom }}</small></div></div>{% else %}<div class="row g-3 mt-1"><div class="col-md-6"><label class="form-label fw-semibold" for="{{ form.panne.id_for_label }}">Panne associée</label>{{ form.panne }}{% if form.panne.errors %}<div class="invalid-feedback d-block">{{ form.panne.errors|striptags }}</div>{% endif %}</div><div class="col-md-6"><label class="form-label fw-semibold" for="{{ form.preventive.id_for_label }}">Préventive associée</label>{{ form.preventive }}{% if form.preventive.errors %}<div class="invalid-feedback d-block">{{ form.preventive.errors|striptags }}</div>{% endif %}</div></div>{% endif %}
         </div>
     </section>
     <div class="row g-3">

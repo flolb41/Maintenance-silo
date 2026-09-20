@@ -91,6 +91,15 @@
             </div>
         </div>
         {% endif %}
+
+        {% if can_manage_preventive %}
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center"><span><i class="bi bi-receipt me-2 text-primary"></i>Factures</span><a class="btn btn-sm btn-outline-primary" href="{% url 'facture_create' %}?preventive={{ preventive.pk }}" aria-label="Ajouter une facture à cette préventive"><i class="bi bi-plus-lg"></i></a></div>
+            <div class="list-group list-group-flush">
+                {% for facture in factures %}<a class="list-group-item list-group-item-action d-flex justify-content-between gap-2" href="{% url 'facture_detail' facture.pk %}"><span>{{ facture.numero }}<small class="d-block text-muted">{{ facture.fournisseur }}</small></span><strong>{{ facture.montant_ttc|floatformat:2 }} €</strong></a>{% empty %}<div class="list-group-item text-muted">Aucune facture associée.</div>{% endfor %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

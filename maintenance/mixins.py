@@ -71,3 +71,10 @@ class AdminSiloRequiredMixin(_ProfileRequiredMixin):
 
     def _user_allowed(self, profile):
         return profile.is_admin() or profile.is_silo()
+
+
+class AdminSiloMaintenanceRequiredMixin(_ProfileRequiredMixin):
+    permission_denied_message = "Accès réservé aux équipes opérationnelles."
+
+    def _user_allowed(self, profile):
+        return profile.is_admin() or profile.is_silo() or profile.is_maintenance()

@@ -37,7 +37,7 @@
                 <li class="nav-item">
                     <a class="nav-link {% if 'panne' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'panne_liste' %}"><i class="bi bi-exclamation-diamond"></i> Pannes</a>
                 </li>
-                {% if profile.is_admin or profile.is_silo %}
+                {% if profile.is_admin or profile.is_silo or profile.is_maintenance %}
                     <li class="nav-item">
                         <a class="nav-link {% if 'preventive' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'preventive_liste' %}"><i class="bi bi-calendar2-check"></i> Préventives</a>
                     </li>

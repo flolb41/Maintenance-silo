@@ -11,6 +11,7 @@ from django import forms
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from django.utils.timezone import localdate
 
 try:
@@ -637,6 +638,17 @@ class PanneForm(forms.ModelForm):
         self.fields["equipement"].empty_label = "— Aucun —"
         self.fields["equipement"].required = False
 
+    def clean(self):
+        cleaned = super().clean()
+        site = cleaned.get("site")
+        equipement = cleaned.get("equipement")
+        if site and equipement and equipement.site_id != site.id:
+            self.add_error(
+                "equipement",
+                "L'équipement sélectionné n'appartient pas au site choisi.",
+            )
+        return cleaned
+
 
 class PanneCreerForm(PanneForm):
     pass
@@ -926,6 +938,13 @@ class MaintenancePreventiveForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+        site = cleaned_data.get("site")
+        equipement = cleaned_data.get("equipement")
+        if site and equipement and equipement.site_id != site.id:
+            self.add_error(
+                "equipement",
+                "L'équipement sélectionné n'appartient pas au site choisi.",
+            )
         periodicite = cleaned_data.get("periodicite")
         echeance = cleaned_data.get("date_echeance")
         recurrence_jusquau = cleaned_data.get("recurrence_jusquau")
@@ -966,12 +985,13 @@ class FactureForm(forms.ModelForm):
     class Meta:
         model = Facture
         fields = [
-            "panne", "numero", "fournisseur", "type_facture",
+            "panne", "preventive", "numero", "fournisseur", "type_facture",
             "statut", "montant_ht", "taux_tva", "montant_tva", "montant_ttc",
             "date_facture", "description",
         ]
         widgets = {
             "panne": forms.Select(attrs={"class": "form-select"}),
+            "preventive": forms.Select(attrs={"class": "form-select"}),
             "numero": forms.TextInput(attrs={"class": "form-control"}),
             "fournisseur": forms.TextInput(attrs={"class": "form-control"}),
             "type_facture": forms.Select(attrs={"class": "form-select"}),
@@ -989,7 +1009,12 @@ class FactureForm(forms.ModelForm):
         for field in self.fields.values():
             field.required = False
         self.panne_imposee = panne if isinstance(panne, Panne) else None
-        self.fields["panne"].required = self.panne_imposee is None
+        self.preventive_imposee = (
+            preventive if isinstance(
+                preventive, MaintenancePreventive) else None
+        )
+        self.fields["panne"].required = False
+        self.fields["preventive"].required = False
         self.fields["fichier_upload"].widget.attrs.update({
             "class": "form-control",
             "accept": ".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx",
@@ -1004,9 +1029,17 @@ class FactureForm(forms.ModelForm):
             self.fields["panne"].queryset = Panne.objects.filter(
                 site__in=sites
             ).select_related("site").order_by("-date_signalement")
+            self.fields["preventive"].queryset = MaintenancePreventive.objects.filter(
+                Q(site__in=sites) | Q(equipement__site__in=sites)
+            ).select_related("site", "equipement").distinct().order_by(
+                "-date_echeance"
+            )
         if panne:
             self.fields["panne"].initial = panne
+        if preventive:
+            self.fields["preventive"].initial = preventive
         self.fields["panne"].empty_label = "— Sélectionner la panne concernée —"
+        self.fields["preventive"].empty_label = "— Sélectionner la préventive concernée —"
 
     def clean_fichier_upload(self):
         fichier = self.cleaned_data.get("fichier_upload")
@@ -1018,6 +1051,8 @@ class FactureForm(forms.ModelForm):
         cleaned = super().clean()
         if self.panne_imposee is not None:
             cleaned["panne"] = self.panne_imposee
+        if self.preventive_imposee is not None:
+            cleaned["preventive"] = self.preventive_imposee
 
         fichier_upload = self.files.get("fichier_upload")
         self.invoice_data = {}
@@ -1066,14 +1101,20 @@ class FactureForm(forms.ModelForm):
         cleaned["statut"] = cleaned.get("statut") or Facture.STATUT_BROUILLON
         cleaned["taux_tva"] = Decimal(str(cleaned.get("taux_tva") or 0))
         cleaned["montant_tva"] = Decimal(str(cleaned.get("montant_tva") or 0))
-        if not cleaned.get("panne"):
+        panne = cleaned.get("panne")
+        preventive = cleaned.get("preventive")
+        if not panne and not preventive:
             self.add_error(
-                "panne", "Chaque facture doit être reliée à une panne.")
+                "panne", "Sélectionnez une panne ou une préventive.")
+        elif panne and preventive:
+            self.add_error(
+                "preventive",
+                "Une facture ne peut être liée qu'à une seule intervention.",
+            )
         return cleaned
 
     def save(self, commit=True):
         facture = super().save(commit=False)
-        facture.preventive = None
         fichier = self.cleaned_data.get("fichier_upload")
         if fichier:
             facture.fichier = fichier
