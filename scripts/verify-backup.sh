@@ -2,7 +2,7 @@
 set -eu
 
 backup_root=/backups
-backup_name=${1:-$(find "$backup_root" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | tail -n 1)}
+backup_name=${1:-$(ls -1 "$backup_root" | sort | tail -n 1)}
 backup_dir="$backup_root/$backup_name"
 
 if [ -z "$backup_name" ] || [ ! -d "$backup_dir" ]; then
