@@ -2,6 +2,8 @@ from django.contrib import admin
 
 from .models import (
     CelluleGrain,
+    ChecklistModele,
+    ChecklistModeleElement,
     Equipement,
     Facture,
     MaintenancePreventive,
@@ -68,6 +70,19 @@ class TypeGrainAdmin(admin.ModelAdmin):
     list_display = ("nom", "poids_specifique_moyen", "actif")
     list_filter = ("actif",)
     search_fields = ("nom",)
+
+
+class ChecklistModeleElementInline(admin.TabularInline):
+    model = ChecklistModeleElement
+    extra = 1
+
+
+@admin.register(ChecklistModele)
+class ChecklistModeleAdmin(admin.ModelAdmin):
+    list_display = ("nom", "actif", "cree_le")
+    list_filter = ("actif",)
+    search_fields = ("nom", "description")
+    inlines = [ChecklistModeleElementInline]
 
 
 @admin.register(Equipement)
