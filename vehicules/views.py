@@ -303,6 +303,11 @@ class ImmobilisationClotureView(AdminRequiredMixin, UpdateView):
     def get_queryset(self):
         return ImmobilisationVehicule.objects.filter(fin__isnull=True).select_related("vehicule")
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs.pop("instance", None)
+        return kwargs
+
     def form_valid(self, form):
         immobilisation = self.get_object()
         if form.cleaned_data["fin"] < immobilisation.debut:
