@@ -286,6 +286,36 @@ class VehiculeWorkflowTests(TestCase):
             200,
         )
 
+    def test_rapport_vgp_prive_est_telechargeable_par_admin(self):
+        self.vehicule.date_vgp = localdate() + timedelta(days=90)
+        self.vehicule.rapport_vgp = SimpleUploadedFile(
+            "rapport-vgp.pdf", b"%PDF-1.4\nrapport prive"
+        )
+        self.vehicule.save(update_fields=["date_vgp", "rapport_vgp"])
+
+        self.assertFalse(
+            Path(self.vehicule.rapport_vgp.path).is_relative_to(
+                Path(settings.MEDIA_ROOT)
+            )
+        )
+        with self.assertRaises(ValueError):
+            self.vehicule.rapport_vgp.url
+
+        self.client.login(username="silo_vehicules", password="testpass123")
+        self.assertEqual(
+            self.client.get(reverse(
+                "vehicules:rapport_vgp", args=[self.vehicule.pk]
+            )).status_code,
+            403,
+        )
+        self.client.login(username="admin_vehicules", password="testpass123")
+        self.assertEqual(
+            self.client.get(reverse(
+                "vehicules:rapport_vgp", args=[self.vehicule.pk]
+            )).status_code,
+            200,
+        )
+
     def test_echeance_dans_trente_jours_declenche_une_alerte(self):
         self.vehicule.date_assurance = localdate() + timedelta(days=15)
         self.vehicule.save(update_fields=["date_assurance"])

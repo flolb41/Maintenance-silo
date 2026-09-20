@@ -78,6 +78,12 @@ class Vehicule(OptimizedMediaMixin, models.Model):
         default="DEKRA",
         verbose_name="Organisme VGP",
     )
+    rapport_vgp = models.FileField(
+        upload_to="vehicules/vgp/%Y/%m/",
+        storage=private_invoice_storage,
+        blank=True,
+        verbose_name="Rapport VGP (PDF)",
+    )
     prochain_entretien_date = models.DateField(null=True, blank=True)
     prochain_entretien_km = models.PositiveIntegerField(null=True, blank=True)
     photo = models.ImageField(upload_to="vehicules/%Y/%m/", blank=True)

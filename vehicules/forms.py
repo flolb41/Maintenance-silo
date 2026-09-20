@@ -1,4 +1,7 @@
+import os
+
 from django import forms
+from django.core.exceptions import ValidationError
 
 from maintenance.forms import valider_fichier
 from maintenance.models import Site
@@ -25,6 +28,7 @@ class VehiculeForm(forms.ModelForm):
             "date_mines",
             "date_vgp",
             "organisme_vgp",
+            "rapport_vgp",
             "prochain_entretien_date",
             "prochain_entretien_km",
             "photo",
@@ -46,6 +50,7 @@ class VehiculeForm(forms.ModelForm):
             "date_mines": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "date_vgp": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "organisme_vgp": forms.TextInput(attrs={"class": "form-control"}),
+            "rapport_vgp": forms.ClearableFileInput(attrs={"class": "form-control", "accept": "application/pdf"}),
             "prochain_entretien_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "prochain_entretien_km": forms.NumberInput(attrs={"class": "form-control", "min": 0}),
             "photo": forms.ClearableFileInput(attrs={"class": "form-control", "accept": "image/*"}),
@@ -60,6 +65,20 @@ class VehiculeForm(forms.ModelForm):
 
     def clean_immatriculation(self):
         return self.cleaned_data["immatriculation"].strip().upper()
+
+    def clean_rapport_vgp(self):
+        rapport = self.cleaned_data.get("rapport_vgp")
+        if not rapport:
+            return rapport
+        valider_fichier(rapport)
+        if os.path.splitext(rapport.name)[1].lower() != ".pdf":
+            raise ValidationError("Le rapport VGP doit être un fichier PDF.")
+        rapport.seek(0)
+        signature = rapport.read(5)
+        rapport.seek(0)
+        if signature != b"%PDF-":
+            raise ValidationError("Le rapport VGP doit être un PDF valide.")
+        return rapport
 
     def clean(self):
         cleaned_data = super().clean()

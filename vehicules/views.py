@@ -3,6 +3,7 @@ from django.db.models import Q, Sum
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from django.urls import reverse, reverse_lazy
+from django.utils.timezone import localdate
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
 from maintenance.mixins import AdminRequiredMixin
@@ -84,6 +85,7 @@ class VehiculeDetailView(AdminRequiredMixin, DetailView):
             "cree_par")
         contexte["cout_total"] = self.object.entretiens.aggregate(total=Sum("cout"))[
             "total"] or 0
+        contexte["today"] = localdate()
         return contexte
 
 
@@ -128,6 +130,8 @@ class VehiculeDeleteView(AdminRequiredMixin, DeleteView):
     def form_valid(self, form):
         if self.object.photo:
             self.object.photo.delete(save=False)
+        if self.object.rapport_vgp:
+            self.object.rapport_vgp.delete(save=False)
         for entretien in self.object.entretiens.all():
             if entretien.facture:
                 entretien.facture.delete(save=False)
@@ -204,4 +208,21 @@ class EntretienFactureView(AdminRequiredMixin, DetailView):
             entretien.facture.open("rb"),
             as_attachment=True,
             filename=entretien.facture.name.rsplit("/", 1)[-1],
+        )
+
+
+class VehiculeRapportVgpView(AdminRequiredMixin, DetailView):
+    model = Vehicule
+
+    def get_queryset(self):
+        return Vehicule.objects.filter(categorie__in=CATEGORIES_GEREES)
+
+    def get(self, request, *args, **kwargs):
+        vehicule = self.get_object()
+        if not vehicule.rapport_vgp:
+            raise Http404
+        return FileResponse(
+            vehicule.rapport_vgp.open("rb"),
+            as_attachment=True,
+            filename=vehicule.rapport_vgp.name.rsplit("/", 1)[-1],
         )
