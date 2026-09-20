@@ -17,8 +17,10 @@
 			<label class="form-label" for="{{ form.nom.id_for_label }}">{{ form.nom.label }}</label>
 			{{ form.nom }}{{ form.nom.errors }}
 		</div>
-		<div class="col-md-6 d-flex align-items-end pb-2">
+		<div class="col-md-6 d-flex align-items-end pb-2 gap-3 flex-wrap">
 			<div class="form-check">{{ form.actif }} <label class="form-check-label" for="{{ form.actif.id_for_label }}">{{ form.actif.label }}</label></div>
+			<div class="form-check">{{ form.activite_silos }} <label class="form-check-label" for="{{ form.activite_silos.id_for_label }}">{{ form.activite_silos.label }}</label></div>
+			<div class="form-check">{{ form.activite_vehicules }} <label class="form-check-label" for="{{ form.activite_vehicules.id_for_label }}">{{ form.activite_vehicules.label }}</label></div>
 		</div>
 		<div class="col-12">
 			<label class="form-label" for="{{ form.adresse.id_for_label }}">{{ form.adresse.label }}</label>

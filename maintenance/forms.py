@@ -195,11 +195,14 @@ class SiteForm(forms.ModelForm):
 
     class Meta:
         model = Site
-        fields = ["nom", "adresse", "actif"]
+        fields = ["nom", "adresse", "actif",
+                  "activite_silos", "activite_vehicules"]
         widgets = {
             "nom": forms.TextInput(attrs={"class": "form-control"}),
             "adresse": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
             "actif": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "activite_silos": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "activite_vehicules": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 
     def clean_photos(self):

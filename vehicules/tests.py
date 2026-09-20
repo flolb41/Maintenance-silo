@@ -180,6 +180,25 @@ class VehiculeWorkflowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("immatriculation", response.context["form"].errors)
 
+    def test_sites_sans_activite_vehicules_sont_exclus_des_choix(self):
+        site_silo = Site.objects.create(
+            nom="Site silos uniquement",
+            actif=True,
+            activite_silos=True,
+            activite_vehicules=False,
+        )
+        self.client.login(username="admin_vehicules", password="testpass123")
+
+        formulaire = self.client.get(reverse("vehicules:ajouter"))
+        liste = self.client.get(reverse("vehicules:liste"))
+
+        self.assertIn(
+            self.site, formulaire.context["form"].fields["site"].queryset)
+        self.assertNotIn(
+            site_silo, formulaire.context["form"].fields["site"].queryset)
+        self.assertIn(self.site, liste.context["sites"])
+        self.assertNotIn(site_silo, liste.context["sites"])
+
     def test_remorque_exige_une_immatriculation_et_un_passage_aux_mines(self):
         self.client.login(username="admin_vehicules", password="testpass123")
 

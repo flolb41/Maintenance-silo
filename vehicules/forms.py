@@ -60,7 +60,9 @@ class VehiculeForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["site"].queryset = Site.objects.filter(
-            actif=True).order_by("nom")
+            actif=True,
+            activite_vehicules=True,
+        ).order_by("nom")
         self.fields["site"].empty_label = "— Choisir un site —"
 
     def clean_immatriculation(self):

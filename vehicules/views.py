@@ -60,7 +60,10 @@ class VehiculeListView(AdminRequiredMixin, ListView):
             "alertes": sum(1 for vehicule in parc if vehicule.alerte_echeance),
             "categories": Vehicule.Categorie.choices,
             "statuts": Vehicule.Statut.choices,
-            "sites": Site.objects.filter(actif=True).order_by("nom"),
+            "sites": Site.objects.filter(
+                actif=True,
+                activite_vehicules=True,
+            ).order_by("nom"),
             "current_q": self.request.GET.get("q", ""),
             "current_categorie": self.request.GET.get("categorie", ""),
             "current_statut": self.request.GET.get("statut", ""),

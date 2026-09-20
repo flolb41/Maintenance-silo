@@ -67,6 +67,14 @@ class Site(models.Model):
     nom = models.CharField(max_length=150)
     adresse = models.TextField(blank=True)
     actif = models.BooleanField(default=True)
+    activite_silos = models.BooleanField(
+        default=True,
+        verbose_name="Activité silos",
+    )
+    activite_vehicules = models.BooleanField(
+        default=True,
+        verbose_name="Activité véhicules",
+    )
     utilisateurs = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
         blank=True,
