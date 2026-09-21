@@ -35,6 +35,16 @@ jobs:
           USE_SQLITE: "true"
         run: python manage.py makemigrations --check
 
+      - name: Vérification sécurité production
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings
+          DEBUG: "false"
+          SECRET_KEY: "ci-only-random-secret-change-me-9f3d7a"
+          ALLOWED_HOSTS: "localhost,testserver"
+          CSRF_TRUSTED_ORIGINS: "https://localhost"
+          USE_SQLITE: "true"
+        run: python manage.py check --deploy
+
       - name: Lancer les tests rapides
         env:
           DJANGO_SETTINGS_MODULE: config.settings
